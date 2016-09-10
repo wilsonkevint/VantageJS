@@ -1,0 +1,10 @@
+{
+  "name": "vantage-js",
+  "version": "0.0.0",
+  "description": "VantageJS",
+  "main": "app.js",
+  "author": {
+    "name": "wilsoadmin",
+    "email": ""
+  }
+}
