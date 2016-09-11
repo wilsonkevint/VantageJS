@@ -59,6 +59,7 @@ class VantageWS {
                 if (vpDevice.validateCRC(data)) {
                     self.current = new vpCurrent(data);                    
                     self.updateWU(self.current);
+                    io.sockets.emit('current', JSON.stringify(self.current));
                 }
 
             }, VantageWS.deviceError);

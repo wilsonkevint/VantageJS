@@ -45,6 +45,7 @@ var VantageWS = (function () {
                 if (vpDevice_1.default.validateCRC(data)) {
                     self.current = new vpCurrent_1.default(data);
                     self.updateWU(self.current);
+                    io.sockets.emit('current', JSON.stringify(self.current));
                 }
             }, VantageWS.deviceError);
         }, VantageWS.deviceError);
