@@ -1,4 +1,7 @@
-﻿export default class vpBase {
+﻿declare function require(name: string);
+var moment = require('moment');
+
+export default class vpBase {
     _data: Uint8Array;
     dataIndx: number;
 
@@ -27,8 +30,10 @@
             var hrs = Math.floor(time / 100);
             var mins = Math.floor((time / 100 - hrs) * 100);
         }
+        else
+            return "";
 
-        return hrs + ":" + mins;
+        return moment().hours(hrs).minutes(mins).format('h:mm a'); 
     }
 
     peek(offset) :number {
@@ -66,7 +71,7 @@
         return vpBase.round(rain, 2) / 100;
     }
 
-    static date(dt: number): Date {
+    static date(dt: number): string {
                
         if (dt == 65535 || dt == 0)
             return null;
@@ -75,7 +80,9 @@
         var days = (dt & 0xf80) >> 7;
         var month = (dt & 0xF000) >> 12;
 
-        return new Date(yrs, month, days);
+        console.log(yrs.toString() + '-' + month.toString() + '-' + days.toString()); 
+
+        return moment(yrs.toString() + '-' + month.toString() + '-' + days.toString()).format('MM/DD/YYYY');
     }  
 
 

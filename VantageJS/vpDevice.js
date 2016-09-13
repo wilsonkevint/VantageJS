@@ -41,7 +41,10 @@ var vpDevice = (function () {
             var received = [];
             self.port.write(cmd + '\n');
             self.dataReceived = function (data) {
-                received.push.apply(received, data);
+                if (data[0] == 6 && data.length > 1)
+                    received.push.apply(received, data.slice(1));
+                else
+                    received.push.apply(received, data);
                 if (received.length >= reqchars) {
                     resolve(received);
                 }

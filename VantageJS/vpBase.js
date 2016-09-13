@@ -1,4 +1,5 @@
 "use strict";
+var moment = require('moment');
 var vpBase = (function () {
     function vpBase(data) {
         this._data = data;
@@ -20,7 +21,9 @@ var vpBase = (function () {
             var hrs = Math.floor(time / 100);
             var mins = Math.floor((time / 100 - hrs) * 100);
         }
-        return hrs + ":" + mins;
+        else
+            return "";
+        return moment().hours(hrs).minutes(mins).format('h:mm a');
     };
     vpBase.prototype.peek = function (offset) {
         return this._data[this.dataIndx + offset];
@@ -54,7 +57,8 @@ var vpBase = (function () {
         var yrs = (dt & 0x7f) + 2000;
         var days = (dt & 0xf80) >> 7;
         var month = (dt & 0xF000) >> 12;
-        return new Date(yrs, month, days);
+        console.log(yrs.toString() + '-' + month.toString() + '-' + days.toString());
+        return moment(yrs.toString() + '-' + month.toString() + '-' + days.toString()).format('MM/DD/YYYY');
     };
     return vpBase;
 }());

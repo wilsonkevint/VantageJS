@@ -65,7 +65,7 @@ export default class vpCurrent extends vpBase {
     dewpoint: number;
     rainRate: number;
     stormRain: number;
-    stormDate: Date;
+    stormDate: string;
     dayRain: number;
     monthRain: number;
     yearRain: number;
@@ -106,9 +106,9 @@ export default class vpCurrent extends vpBase {
     }
 
     fBarometer(): number {
-        var barom = this.nextDecimal() / 10;
+        var barom = this.nextDecimal() / 1000;
 
-        return vpBase.round(barom, 2) / 100;
+        return vpBase.round(barom, 2);
     }
 
     fWindDirection(degrees): string {
@@ -139,7 +139,7 @@ export default class vpCurrent extends vpBase {
         return Math.round(dewPt * 100) / 100;
     }
 
-    fStormDate(): Date {
+    fStormDate(): string {
         return vpBase.date(this.nextDecimal());
     }
 

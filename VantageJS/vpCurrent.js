@@ -69,8 +69,8 @@ var vpCurrent = (function (_super) {
         return Trend;
     };
     vpCurrent.prototype.fBarometer = function () {
-        var barom = this.nextDecimal() / 10;
-        return vpBase_1.default.round(barom, 2) / 100;
+        var barom = this.nextDecimal() / 1000;
+        return vpBase_1.default.round(barom, 2);
     };
     vpCurrent.prototype.fWindDirection = function (degrees) {
         var directions = ["N", "NNE", "NE", "ENE", "E", "ESE", "SE", "SSE", "S", "SSW", "SW", "WSW", "W", "WNW", "NW", "NNW", "N"];

@@ -1,0 +1,127 @@
+"use strict";
+var vpDevice_1 = require('./vpDevice');
+var vpCurrent_1 = require('./vpCurrent');
+var vpHiLow_1 = require('./vpHiLow');
+var moment = require('moment');
+var http = require('http');
+var Promise = require('promise');
+var os = require('os');
+var pauseSecs = 30;
+var vantageWS = (function () {
+    function vantageWS(comPort, updateFreq) {
+        this.station = new vpDevice_1.default(comPort);
+        var self = this;
+        var ctimer;
+        this.station.onOpen = function () {
+            self.getHiLows();
+            ctimer = setInterval(function () {
+                self.getCurrent();
+            }, updateFreq);
+        };
+        setInterval(function () {
+            self.getHiLows();
+        }, 60000 * 60);
+    }
+    vantageWS.prototype.getLoops = function () {
+        var self = this;
+        this.station.wakeUp().then(function (result) {
+            self.station.readLoop(10, function (data) {
+                if (vpDevice_1.default.validateCRC(data)) {
+                    self.current = new vpCurrent_1.default(data);
+                    self.updateWU(self.current);
+                }
+            });
+        });
+    };
+    vantageWS.prototype.getCurrent = function () {
+        var self = this;
+        if (self.pauseLoop) {
+            var enddt = moment();
+            var duration = moment.duration(enddt.diff(self.pauseLoop));
+            if (duration.asSeconds() > pauseSecs) {
+                self.pauseLoop = null;
+            }
+            else {
+                return;
+            }
+        }
+        this.station.wakeUp().then(function (result) {
+            self.station.getData("LOOP 1", 99).then(function (data) {
+                if (vpDevice_1.default.validateCRC(data)) {
+                    self.current = new vpCurrent_1.default(data);
+                    self.updateWU(self.current);
+                    if (self.onCurrent)
+                        self.onCurrent(self.current);
+                }
+            }, vantageWS.deviceError);
+        }, vantageWS.deviceError);
+    };
+    vantageWS.prototype.getHiLows = function () {
+        this.pauseLoop = moment();
+        var self = this;
+        this.station.wakeUp().then(function (result) {
+            self.station.getData("HILOWS", 438).then(function (data) {
+                //if (vpDevice.validateCRC(data)) {
+                self.hilows = new vpHiLow_1.default(data);
+                self.hilows.dateLoaded = moment().format('YYYY-MM-DD hh:mm:ss');
+                if (self.onHighLow)
+                    self.onHighLow(self.hilows);
+                //}
+            });
+        });
+    };
+    vantageWS.deviceError = function (err) {
+        console.log(err);
+    };
+    vantageWS.prototype.updateWU = function (current) {
+        var path = '/weatherstation/updateweatherstation.php?ID=KOHAkron2&PASSWORD=1n5Kvp%f&dateutc=' + moment().utc().format('YYYY-MM-DD HH:mm:ss').replace(' ', '%20')
+            + '&winddir=' + current.windDir + '&windspeedmph=' + current.windAvg
+            + '&windgustmph=' + current.windSpeed + '&tempf=' + current.outTemperature
+            + '&rainin=' + current.rainRate + '&dailyrainin=' + current.dayRain + '&baromin=' + current.barometer
+            + '&humidity=' + current.outHumidity + '&dewptf=' + current.dewpoint
+            + '&weather=&clouds='
+            + '&softwaretype=custom&action=updateraw';
+        var options = {
+            host: 'weatherstation.wunderground.com',
+            port: 80,
+            path: path,
+            method: 'get',
+            timeout: 4000
+        };
+        try {
+            var request = http.request(options, function (response) {
+                response.on('data', function (chunk) {
+                    console.log('update WU: ' + String.fromCharCode.apply(null, chunk) + moment().format('hh:mm:ss') + ' temp:' + current.outTemperature);
+                });
+                response.on('timeout', function (socket) {
+                    console.log('resp timeout');
+                });
+                response.on('error', function (err) {
+                    console.log('resp error' + err);
+                });
+            });
+            request.on('error', function (err) {
+                console.log('request error ' + err);
+            });
+            request.setTimeout(30000, function () {
+                console.log('request timeout');
+            });
+            request.end();
+        }
+        catch (ex) {
+            console.log('updateWU exception');
+            console.log(ex);
+        }
+        //rl.on('line', (input) => {
+        //console.log(`Received: ${input}` + input.length);
+        //  if (input.length == 0)
+        //	myPort.write('\n'); 
+        //  else
+        //	myPort.write(input); 
+        //});
+    };
+    return vantageWS;
+}());
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.default = vantageWS;
+//# sourceMappingURL=vantageWS.js.map
