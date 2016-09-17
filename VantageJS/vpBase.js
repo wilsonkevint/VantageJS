@@ -9,6 +9,26 @@ var vpBase = (function () {
         this.dataIndx += 1;
         return val;
     };
+    vpBase.prototype.nextDateTime = function () {
+        var dt;
+        var ardate = this.nextDecimal();
+        var artime = this.nextDecimal();
+        if (ardate == 65535 || !ardate) {
+            return null;
+        }
+        var yrs = ardate / 512 + 2000;
+        var months = ardate % 512 / 32;
+        var days = ardate % 512 % 32;
+        var hrs = artime / 100;
+        var min = artime % 100;
+        try {
+            dt = new moment(yrs.toString() + vpBase.pad(months, 2) + vpBase.pad(days, 2), 'YYYYMMDD');
+        }
+        catch (x) {
+            return null;
+        }
+        return dt.format('MM/DD/YYYY HH:mm');
+    };
     vpBase.prototype.nextDecimal = function () {
         var byte1 = this.nextByte();
         var byte2 = this.nextByte();
@@ -32,7 +52,11 @@ var vpBase = (function () {
         var multiplier = Math.pow(10, precision || 0);
         return Math.round(value * multiplier) / multiplier;
     };
-    vpBase.prototype.temperature = function () {
+    vpBase.prototype.fBarometer = function () {
+        var barom = this.nextDecimal() / 1000;
+        return vpBase.round(barom, 2);
+    };
+    vpBase.prototype.fTemperature = function () {
         var temp1 = this.peek(0);
         var temp2 = this.peek(1);
         var temp = this.nextDecimal();
@@ -45,7 +69,7 @@ var vpBase = (function () {
         }
         return temp;
     };
-    vpBase.prototype.rain = function () {
+    vpBase.prototype.fRain = function () {
         var rain = this.nextDecimal();
         if (rain == 65535)
             rain = 0;
@@ -57,8 +81,44 @@ var vpBase = (function () {
         var yrs = (dt & 0x7f) + 2000;
         var days = (dt & 0xf80) >> 7;
         var month = (dt & 0xF000) >> 12;
-        console.log(yrs.toString() + '-' + month.toString() + '-' + days.toString());
-        return moment(yrs.toString() + '-' + month.toString() + '-' + days.toString()).format('MM/DD/YYYY');
+        var mdt = yrs.toString() + ' ' + vpBase.pad(month, 2) + ' ' + vpBase.pad(days, 2);
+        mdt = moment(mdt, 'YYYY MM DD').format('MM/DD/YYYY');
+        return mdt;
+    };
+    vpBase.pad = function (num, size) {
+        var s = "000000000" + num;
+        return s.substr(s.length - size);
+    };
+    vpBase.timeDiff = function (dt, type) {
+        var diff = new Date().getMilliseconds() - dt.getMilliseconds();
+        diff = Math.abs(diff);
+        var seconds = Math.floor(diff / 1000);
+        var minutes = Math.floor(seconds / 60);
+        var hours = Math.floor(minutes / 60);
+        switch (type) {
+            case 'h':
+                diff = hours;
+                break;
+            case 'm':
+                diff = minutes;
+                break;
+            case 's':
+                diff = seconds;
+                break;
+        }
+        return diff;
+    };
+    vpBase.getDateTimeStamp = function (dt) {
+        var dtStamp;
+        var tmStamp;
+        dtStamp = (dt.Day + dt.Month * 32 + (dt.Year - 2000) * 512);
+        tmStamp = (dt.Hour * 100 + dt.Minute);
+        var data = new Array(4);
+        data[0] = (dtStamp % 256);
+        data[1] = (dtStamp / 256);
+        data[2] = (tmStamp % 256);
+        data[3] = (tmStamp / 256);
+        return data;
     };
     return vpBase;
 }());

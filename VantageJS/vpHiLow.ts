@@ -5,11 +5,11 @@ export default class vpHiLow extends vpBase {
         super(data);
         this.dataIndx = 0;
 
-        this.barometer = this.fBarometer();
+        this.barometer = this.fBarometerHL();
         this.windSpeed = this.fWindSpeed();
-        this.inTemperature = this.fTemperature(false);
+        this.inTemperature = this.fTemperatureHL(false);
         this.inHumidity = this.fHumidity(false);
-        this.outTemperature = this.fTemperature(true);
+        this.outTemperature = this.fTemperatureHL(true);
         this.dewpoint = this.fDewPoint();
         this.windChill = this.fWindChill();
         this.heatIndex = this.fHeatIndex();
@@ -17,7 +17,7 @@ export default class vpHiLow extends vpBase {
         this.radiation = this.fHeatIndex();
         this.uvHigh = this.fUVHigh();
 
-        this.rainHigh = this.fRain(); 
+        this.rainHigh = this.fRainHL(); 
 
         this.dataIndx += 150;                       //extra/leaf/soil
 
@@ -42,7 +42,7 @@ export default class vpHiLow extends vpBase {
     outHumidity: hiLow;
     dateLoaded: string;
 
-    fBarometer(): hiLow {
+    fBarometerHL(): hiLow {
         var hilow = new hiLow();
         hilow.dailyLow = vpBase.round(this.nextDecimal() / 1000, 2);
         hilow.dailyHi = vpBase.round(this.nextDecimal() / 1000, 2);
@@ -69,21 +69,21 @@ export default class vpHiLow extends vpBase {
         return hilow;
     }
 
-    fTemperature(outside: boolean): hiLow {
+    fTemperatureHL(outside: boolean): hiLow {
         var hilow = new hiLow();
 
         //the sequence of low high is reversed inside vs outside (blame Davis developer)
-        var dailyHi = this.temperature();
-        var dailyLow = this.temperature();
+        var dailyHi = this.fTemperature();
+        var dailyLow = this.fTemperature();
 
         var dailyHighTime = this.nextTime();
         var dailyLowTime = this.nextTime(); 
 
-        var monthLow = this.temperature();
-        var monthHi = this.temperature();
+        var monthLow = this.fTemperature();
+        var monthHi = this.fTemperature();
 
-        var yearLow = this.temperature();
-        var yearHi = this.temperature();
+        var yearLow = this.fTemperature();
+        var yearHi = this.fTemperature();
 
         hilow.dailyLow = (outside ? dailyHi : dailyLow);
         hilow.dailyHi = (outside ? dailyLow : dailyLow);
@@ -183,7 +183,7 @@ export default class vpHiLow extends vpBase {
         return hi;
     }
 
-    fRain(): hiLow {
+    fRainHL(): hiLow {
         var hi = new hiLow();
         hi.dailyHi = this.nextDecimal() / 100;
         hi.dailyHighTime = this.nextTime();

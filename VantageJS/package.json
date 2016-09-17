@@ -5,7 +5,7 @@
   "main": "app.js",
   "author": {
     "name": "wilsoadmin",
-    "email": ""
+    "email": "kwilson@1.com"
   },
   "dependencies": {
     "moment": "^2.14.1",

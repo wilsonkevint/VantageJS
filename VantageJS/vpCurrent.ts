@@ -14,9 +14,9 @@ export default class vpCurrent extends vpBase {
         this.dataIndx += 3;
 
         this.barometer = this.fBarometer();
-        this.inTemperature = this.temperature();
+        this.inTemperature = this.fTemperature();
         this.inHumidity = this.nextByte();
-        this.outTemperature = this.temperature();
+        this.outTemperature = this.fTemperature();
         this.windSpeed = this.nextByte();
         this.windAvg = this.nextByte();
         this.windDir = this.nextDecimal();
@@ -29,15 +29,15 @@ export default class vpCurrent extends vpBase {
 
         this.dataIndx += 7;
 
-        this.rainRate = this.rain();
+        this.rainRate = this.fRain();
 
         this.dataIndx += 3;
 
-        this.stormRain = this.rain();
+        this.stormRain = this.fRain();
         this.stormDate = this.fStormDate();
-        this.dayRain = this.rain();
-        this.monthRain = this.rain();
-        this.yearRain = this.rain();
+        this.dayRain = this.fRain();
+        this.monthRain = this.fRain();
+        this.yearRain = this.fRain();
 
         this.dataIndx += 30;
 
@@ -103,13 +103,7 @@ export default class vpCurrent extends vpBase {
         }
 
         return Trend;
-    }
-
-    fBarometer(): number {
-        var barom = this.nextDecimal() / 1000;
-
-        return vpBase.round(barom, 2);
-    }
+    }    
 
     fWindDirection(degrees): string {
         var directions = ["N", "NNE", "NE", "ENE", "E", "ESE", "SE", "SSE", "S", "SSW", "SW", "WSW", "W", "WNW", "NW", "NNW", "N"];

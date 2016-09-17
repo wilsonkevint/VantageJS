@@ -38,6 +38,7 @@
   </ItemGroup>
   <ItemGroup>
     <TypeScriptCompile Include="app.ts" />
+    <TypeScriptCompile Include="vpArchive.ts" />
     <TypeScriptCompile Include="vpBase.ts" />
     <TypeScriptCompile Include="vpCurrent.ts" />
     <TypeScriptCompile Include="vpDevice.ts" />

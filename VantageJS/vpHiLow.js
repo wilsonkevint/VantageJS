@@ -10,23 +10,23 @@ var vpHiLow = (function (_super) {
     function vpHiLow(data) {
         _super.call(this, data);
         this.dataIndx = 0;
-        this.barometer = this.fBarometer();
+        this.barometer = this.fBarometerHL();
         this.windSpeed = this.fWindSpeed();
-        this.inTemperature = this.fTemperature(false);
+        this.inTemperature = this.fTemperatureHL(false);
         this.inHumidity = this.fHumidity(false);
-        this.outTemperature = this.fTemperature(true);
+        this.outTemperature = this.fTemperatureHL(true);
         this.dewpoint = this.fDewPoint();
         this.windChill = this.fWindChill();
         this.heatIndex = this.fHeatIndex();
         this.thswIndex = this.fHeatIndex();
         this.radiation = this.fHeatIndex();
         this.uvHigh = this.fUVHigh();
-        this.rainHigh = this.fRain();
+        this.rainHigh = this.fRainHL();
         this.dataIndx += 150; //extra/leaf/soil
         this.outHumidity = this.fHumidity(true);
         this._data = null;
     }
-    vpHiLow.prototype.fBarometer = function () {
+    vpHiLow.prototype.fBarometerHL = function () {
         var hilow = new hiLow();
         hilow.dailyLow = vpBase_1.default.round(this.nextDecimal() / 1000, 2);
         hilow.dailyHi = vpBase_1.default.round(this.nextDecimal() / 1000, 2);
@@ -46,17 +46,17 @@ var vpHiLow = (function (_super) {
         hilow.yearHi = this.nextByte();
         return hilow;
     };
-    vpHiLow.prototype.fTemperature = function (outside) {
+    vpHiLow.prototype.fTemperatureHL = function (outside) {
         var hilow = new hiLow();
         //the sequence of low high is reversed inside vs outside (blame Davis developer)
-        var dailyHi = this.temperature();
-        var dailyLow = this.temperature();
+        var dailyHi = this.fTemperature();
+        var dailyLow = this.fTemperature();
         var dailyHighTime = this.nextTime();
         var dailyLowTime = this.nextTime();
-        var monthLow = this.temperature();
-        var monthHi = this.temperature();
-        var yearLow = this.temperature();
-        var yearHi = this.temperature();
+        var monthLow = this.fTemperature();
+        var monthHi = this.fTemperature();
+        var yearLow = this.fTemperature();
+        var yearHi = this.fTemperature();
         hilow.dailyLow = (outside ? dailyHi : dailyLow);
         hilow.dailyHi = (outside ? dailyLow : dailyLow);
         hilow.dailyHighTime = (outside ? dailyLowTime : dailyHighTime);
@@ -127,7 +127,7 @@ var vpHiLow = (function (_super) {
         hi.yearHi = this.nextDecimal();
         return hi;
     };
-    vpHiLow.prototype.fRain = function () {
+    vpHiLow.prototype.fRainHL = function () {
         var hi = new hiLow();
         hi.dailyHi = this.nextDecimal() / 100;
         hi.dailyHighTime = this.nextTime();

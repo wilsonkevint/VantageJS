@@ -13,7 +13,33 @@ export default class vpBase {
         var val = this._data[this.dataIndx];
         this.dataIndx += 1;
         return val;
-}
+    }
+
+    nextDateTime(): Date {
+        var dt;
+        var ardate = this.nextDecimal();
+        var artime = this.nextDecimal();
+
+        if (ardate == 65535 || !ardate) {
+            return null;
+        }
+
+        var yrs = ardate / 512 + 2000;
+        var months = ardate % 512 / 32;
+        var days = ardate % 512 % 32;
+        var hrs = artime / 100;
+        var min = artime % 100;
+
+        try {
+            dt = new moment(yrs.toString() + vpBase.pad(months, 2) + vpBase.pad(days, 2), 'YYYYMMDD');  
+        }
+        catch (x) {
+            return null;
+        }
+
+        return dt.format('MM/DD/YYYY HH:mm'); 
+
+    }
 
     nextDecimal() :number {
         var byte1 = this.nextByte();
@@ -45,7 +71,13 @@ export default class vpBase {
         return Math.round(value * multiplier) / multiplier;
     }
 
-    temperature() : number {
+    fBarometer(): number {
+        var barom = this.nextDecimal() / 1000;
+
+        return vpBase.round(barom, 2);
+    }
+
+    fTemperature() : number {
         var temp1 = this.peek(0);
         var temp2 = this.peek(1);
 
@@ -63,7 +95,7 @@ export default class vpBase {
         return temp;
     }
 
-    rain(): number {
+    fRain(): number {
         var rain = this.nextDecimal();
         if (rain == 65535)
             rain = 0;
@@ -78,12 +110,59 @@ export default class vpBase {
 
         var yrs = (dt & 0x7f) + 2000;
         var days = (dt & 0xf80) >> 7;
-        var month = (dt & 0xF000) >> 12;
+        var month = (dt & 0xF000) >> 12;        
 
-        console.log(yrs.toString() + '-' + month.toString() + '-' + days.toString()); 
+        var mdt = yrs.toString() + ' ' + vpBase.pad(month, 2) + ' ' + vpBase.pad(days, 2);
+        
+        mdt = moment(mdt, 'YYYY MM DD').format('MM/DD/YYYY');
 
-        return moment(yrs.toString() + '-' + month.toString() + '-' + days.toString()).format('MM/DD/YYYY');
+        return mdt;
     }  
 
+    static pad(num:number, size:number):string {
+        var s = "000000000" + num;
+        return s.substr(s.length - size);
+    }
 
+    static timeDiff(dt: Date, type: string): number {
+        var diff = new Date().getMilliseconds() - dt.getMilliseconds();
+        diff = Math.abs(diff);
+        var seconds = Math.floor(diff / 1000);
+        var minutes = Math.floor(seconds / 60);
+        var hours = Math.floor(minutes / 60);
+
+        switch (type) {
+            case 'h':
+                diff = hours;
+                break;
+            case 'm':
+                diff = minutes;
+                break;
+            case 's':
+                diff = seconds;
+                break;
+
+        }
+
+        return diff;
+    }
+
+    static getDateTimeStamp(dt: any) : any {
+        var dtStamp;
+        var tmStamp;
+
+        dtStamp = (dt.Day + dt.Month * 32 + (dt.Year - 2000) * 512);
+        tmStamp = (dt.Hour * 100 + dt.Minute);
+
+        var data = new Array(4);
+        data[0] = (dtStamp % 256);
+        data[1] = (dtStamp / 256);
+        data[2] = (tmStamp % 256);
+        data[3] = (tmStamp / 256);
+
+        return data;
+    }
+ 
 }
+
+
