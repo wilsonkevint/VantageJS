@@ -1,7 +1,10 @@
 ﻿
 
     declare function require(name: string);
+    import vpBase from './vpBase';
+    import vpArchive from './vpArchive';
 
+    var moment = require('moment');
     var SerialPort = require("serialport");
     var Promise = require('promise');
 
@@ -58,21 +61,40 @@
 
             this.port.write('LOOP ' + loops.toString() + '\n');
         }
-
-        getData(cmd: string, reqchars: number): any {
+              
+        getData(cmd: any, reqchars: number, expectAck: boolean): any {
             var self = this; 
 
             var promise = new Promise(function (resolve, reject) {
                 var received = [];
                 vpDevice.isBusy = true;
 
-                self.port.write(cmd + '\n');
+                if (typeof cmd == 'string')
+                    self.port.write(cmd + '\n');
+                else
+                    self.port.write(cmd);
 
                 self.dataReceived = function (data: Uint8Array) {
-                    if (data[0] == 6 && data.length > 1)
-                        received.push.apply(received, data.slice(1));
-                    else
+
+                    if (expectAck) {
+                        if (data[0] == 6) {
+                            expectAck = false;
+
+                            if (data.length > 1) {
+                                received.push.apply(received, data.slice(1));
+                            }
+                            else {
+                                if (reqchars == 1)
+                                    received = [6];
+                            }
+                        }
+                        else {
+                            reject(data);
+                        }
+                    }
+                    else {
                         received.push.apply(received, data);
+                    }                    
                                     
                     if (received.length >= reqchars) {
                         vpDevice.isBusy = false;
@@ -89,6 +111,115 @@
 
             return promise;
         }
+
+        getArchived(startDate: string, callback:any) {
+            var archives;
+                        
+            var self = this;
+            
+            self.isAvailable().then(function () {
+
+                self.wakeUp().then(function (result) {
+
+                    self.getData("DMPAFT", 1,true).then(function (data) {
+                        self.sendArchiveTS(startDate, callback);                          
+                    });
+                });
+            });
+
+        }
+
+        sendArchiveTS(startDate: any, callback:any) {
+            var self = this;
+
+            var start = moment(startDate, 'MM/DD/YYYY hh:mm');
+            var stamp = vpBase.getDateTimeStamp(start);
+            var crcTS = vpDevice.getCRC(stamp);
+            var buffer = [];
+            var received = [];
+            var attempts = 0;
+
+            Array.prototype.push.apply(buffer, stamp);
+            Array.prototype.push.apply(buffer, crcTS);    
+
+            self.getData(buffer, 6,true).then(function (data) {
+                self.retrieveArchive(data, callback);     
+            }, function (err) {
+                if (attempts < 4) {
+                    attempts++;
+
+                    setTimeout(function () {
+                        self.sendArchiveTS(buffer, callback);                      
+                    }, 500);
+                }
+                else {
+                    callback('error');
+                    console.log('sendArchiveTS attempted 3 times');
+                }
+            });
+
+        }
+
+        retrieveArchive(buffer: any, callback:any) {
+            var self = this;
+            var base = new vpBase(new Uint8Array(buffer));
+            var pgCount = base.nextDecimal();
+            var firstRecord = base.nextDecimal();
+            var pgIndex = 0;
+            var archives = [];   
+            var received = [];          
+
+            console.log('retrieving ' + pgCount + ' pages'); 
+            
+            self.dataReceived = function (data) {
+
+                if (received.length < 267)
+                    received.push.apply(received, data);
+
+                if (received.length == 267) {
+                    var dataIndx = 0;                  
+
+                    if (vpDevice.getCRC(received)) {
+
+                        pgIndex++;
+
+                        if (pgIndex == 15) {
+                            var x = 1;
+                        }
+
+                        for (var i = 0; i < 5; i++) {
+                            var archrec = new vpArchive(new Uint8Array(received), dataIndx);
+                            if (archrec.archiveDate)
+                                archives.push(archrec);
+                            dataIndx += 52;
+                        }
+
+                        received = [];
+
+                        console.log('retrieved page ' + pgIndex); 
+
+                        if (pgIndex == pgCount) {
+                            callback(archives);
+                        }
+                        else {
+                            self.port.write([6]);
+                        }
+
+                    }
+                    else {
+                        self.port.write(0x21);                  //crc error.. request send again
+                    }
+
+                }     
+
+               
+                            
+            }
+
+            self.port.write([6]);         //acknowledge- start download
+        }
+
+
 
         static crc_table = [
             0x0, 0x1021, 0x2042, 0x3063, 0x4084, 0x50a5, 0x60c6, 0x70e7,
@@ -131,7 +262,7 @@
             for (var i = 0; i < data.length; i++) {
                 var d = data[i];
                 var indx = (crcNum >> 8) ^ d;
-                crcNum = (crcNum << 8) ^ vpDevice.crc_table[indx];
+                crcNum = vpBase.uint16((crcNum << 8) ^ vpDevice.crc_table[indx]);
             }
             return crcNum == 0;
         }
@@ -142,15 +273,14 @@
             for (var i = 0; i < data.length; i++) {
                 var d = data[i];
                 var indx = (crcNum >> 8) ^ d;
-                crcNum = (crcNum << 8) ^ vpDevice.crc_table[indx];
+                crcNum = vpBase.uint16( (crcNum << 8) ^ vpDevice.crc_table[indx]);
             }
 
-            var byte2 = crcNum / 256;
-            var byte1 = crcNum - byte2 * 256;
+            var byte2 = vpBase.uint16(crcNum / 256);
+            var byte1 = vpBase.uint16(crcNum - byte2 * 256);
 
             return [byte2, byte1];
-        }
-
+        }       
 
         wakeUp(): any {
             var self = this;

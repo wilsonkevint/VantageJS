@@ -10,6 +10,7 @@ var moment = require('moment');
 var http = require('http');
 var Promise = require('promise');
 var os = require('os');
+var linq = require('linq');
 
 const pauseSecs: number = 30;
 
@@ -32,13 +33,17 @@ export default class vantageWS {
 
         this.station.onOpen = function () {
             var ctimer;
-         
-            self.getHiLows(); 
+
+           
+
+            //self.getHiLows(); 
 
             ctimer = setInterval(function () {
 
                 if (!self.pauseLoop) 
                     self.getCurrent();
+
+               
 
             }, updateFreqMS);
         
@@ -77,7 +82,7 @@ export default class vantageWS {
 
             self.station.wakeUp().then(function (result) {
 
-                self.station.getData("LOOP 1", 99).then(function (data) {
+                self.station.getData("LOOP 1", 99, true).then(function (data) {
 
                     if (vpDevice.validateCRC(data)) {
                         self.current = new vpCurrent(data);
@@ -86,16 +91,33 @@ export default class vantageWS {
                         if (self.onCurrent)
                             self.onCurrent(self.current);
 
+                        //self.pauseLoop = true;
+
+                        //self.station.getArchived("09/17/2016 00:00", function (archives) {
+                        //    var hiTemp;
+                        //    var lowTemp;
+                            
+                        //    hiTemp = linq.from(archives).groupBy('$.archiveDate', '$.outTemp', self.queryArchives)
+                        //        .log("$.date + ' ' + $.min + ' ' + $.max").toJoinedString();
+                            
+                       // }); 
+
                     }
 
                 }, vantageWS.deviceError);
 
             }, vantageWS.deviceError)
+        
+        }, function (err) {
+            console.log('hilows device not available');
         });
-        //}, function (err) {
-        //    console.log('hilows device not available');
-        //});
 
+    }
+
+    queryArchives(key, group) {
+        return {
+            date: key, min: group.min(), max: group.max()
+        }
     }
 
 
@@ -106,18 +128,18 @@ export default class vantageWS {
         self.station.isAvailable().then(function () {
 
             self.station.wakeUp().then(function (result) {
-                self.station.getData("HILOWS", 438).then(function (data) {
+                self.station.getData("HILOWS", 438,true).then(function (data) {
 
-                    //if (vpDevice.validateCRC(data)) {
-                    self.hilows = new vpHiLow(data);
-                    self.hilows.dateLoaded = moment().format('YYYY-MM-DD hh:mm:ss');
+                    if (vpDevice.validateCRC(data)) {
+                        self.hilows = new vpHiLow(data);
+                        self.hilows.dateLoaded = moment().format('YYYY-MM-DD hh:mm:ss');
 
-                    if (self.onHighLow)
-                        self.onHighLow(self.hilows);
+                        if (self.onHighLow)
+                            self.onHighLow(self.hilows);
 
-                    self.pauseLoop = false;
+                        self.pauseLoop = false;
 
-                    //}
+                    }
 
                 });
             });          
@@ -266,26 +288,8 @@ export default class vantageWS {
         return promise;
     }
 
-    getArchived(startDate:string): vpArchive[] {
-        var archives;
-
-        this.pauseLoop = true;
-        var self = this;
-
-        self.station.isAvailable().then(function () {
-            self.station.wakeUp().then(function (result) {
-                if (startDate) {
-                    var start = moment(startDate, 'MM/DD/YYYY hh:mm');
-                    var stamp = vpBase.getDateTimeStamp(start); 
-                                        
-                }
-            });
-        });
-
-
-        return archives;
-
-    }
+    
+   
 
    
 

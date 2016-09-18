@@ -7,6 +7,7 @@ var moment = require('moment');
 var http = require('http');
 var Promise = require('promise');
 var os = require('os');
+var linq = require('linq');
 var pauseSecs = 30;
 var vantageWS = (function () {
     function vantageWS(comPort, config) {
@@ -16,7 +17,7 @@ var vantageWS = (function () {
         this.config = config;
         this.station.onOpen = function () {
             var ctimer;
-            self.getHiLows();
+            //self.getHiLows(); 
             ctimer = setInterval(function () {
                 if (!self.pauseLoop)
                     self.getCurrent();
@@ -45,7 +46,7 @@ var vantageWS = (function () {
         var self = this;
         self.station.isAvailable().then(function () {
             self.station.wakeUp().then(function (result) {
-                self.station.getData("LOOP 1", 99).then(function (data) {
+                self.station.getData("LOOP 1", 99, true).then(function (data) {
                     if (vpDevice_1.default.validateCRC(data)) {
                         self.current = new vpCurrent_1.default(data);
                         self.updateWU(self);
@@ -54,24 +55,28 @@ var vantageWS = (function () {
                     }
                 }, vantageWS.deviceError);
             }, vantageWS.deviceError);
+        }, function (err) {
+            console.log('hilows device not available');
         });
-        //}, function (err) {
-        //    console.log('hilows device not available');
-        //});
+    };
+    vantageWS.prototype.queryArchives = function (key, group) {
+        return {
+            date: key, min: group.min(), max: group.max()
+        };
     };
     vantageWS.prototype.getHiLows = function () {
         this.pauseLoop = true;
         var self = this;
         self.station.isAvailable().then(function () {
             self.station.wakeUp().then(function (result) {
-                self.station.getData("HILOWS", 438).then(function (data) {
-                    //if (vpDevice.validateCRC(data)) {
-                    self.hilows = new vpHiLow_1.default(data);
-                    self.hilows.dateLoaded = moment().format('YYYY-MM-DD hh:mm:ss');
-                    if (self.onHighLow)
-                        self.onHighLow(self.hilows);
-                    self.pauseLoop = false;
-                    //}
+                self.station.getData("HILOWS", 438, true).then(function (data) {
+                    if (vpDevice_1.default.validateCRC(data)) {
+                        self.hilows = new vpHiLow_1.default(data);
+                        self.hilows.dateLoaded = moment().format('YYYY-MM-DD hh:mm:ss');
+                        if (self.onHighLow)
+                            self.onHighLow(self.hilows);
+                        self.pauseLoop = false;
+                    }
                 });
             });
         }, function (err) {
@@ -185,20 +190,6 @@ var vantageWS = (function () {
             }
         });
         return promise;
-    };
-    vantageWS.prototype.getArchived = function (startDate) {
-        var archives;
-        this.pauseLoop = true;
-        var self = this;
-        self.station.isAvailable().then(function () {
-            self.station.wakeUp().then(function (result) {
-                if (startDate) {
-                    var start = moment(startDate, 'MM/DD/YYYY hh:mm');
-                    var stamp = vpBase_1.default.getDateTimeStamp(start);
-                }
-            });
-        });
-        return archives;
     };
     return vantageWS;
 }());

@@ -3,6 +3,7 @@ var moment = require('moment');
 var vpBase = (function () {
     function vpBase(data) {
         this._data = data;
+        this.dataIndx = 0;
     }
     vpBase.prototype.nextByte = function () {
         var val = this._data[this.dataIndx];
@@ -16,18 +17,18 @@ var vpBase = (function () {
         if (ardate == 65535 || !ardate) {
             return null;
         }
-        var yrs = ardate / 512 + 2000;
-        var months = ardate % 512 / 32;
-        var days = ardate % 512 % 32;
-        var hrs = artime / 100;
-        var min = artime % 100;
+        var yrs = vpBase.uint16(ardate / 512 + 2000);
+        var months = vpBase.uint16(ardate % 512 / 32);
+        var days = vpBase.uint16(ardate % 512 % 32);
+        var hrs = vpBase.uint16(artime / 100);
+        var min = vpBase.uint16(artime % 100);
         try {
-            dt = new moment(yrs.toString() + vpBase.pad(months, 2) + vpBase.pad(days, 2), 'YYYYMMDD');
+            dt = new moment(yrs.toString() + vpBase.pad(months, 2) + vpBase.pad(days, 2) + vpBase.pad(hrs, 2) + vpBase.pad(min, 2), 'YYYYMMDDHH:mm');
         }
         catch (x) {
             return null;
         }
-        return dt.format('MM/DD/YYYY HH:mm');
+        return dt;
     };
     vpBase.prototype.nextDecimal = function () {
         var byte1 = this.nextByte();
@@ -111,14 +112,19 @@ var vpBase = (function () {
     vpBase.getDateTimeStamp = function (dt) {
         var dtStamp;
         var tmStamp;
-        dtStamp = (dt.Day + dt.Month * 32 + (dt.Year - 2000) * 512);
-        tmStamp = (dt.Hour * 100 + dt.Minute);
+        var mdt = moment(dt, 'MM/DD/YYYY');
+        var month = mdt.month() + 1;
+        dtStamp = (mdt.date() + month * 32 + (mdt.year() - 2000) * 512);
+        tmStamp = (mdt.hour() * 100 + mdt.minute());
         var data = new Array(4);
         data[0] = (dtStamp % 256);
-        data[1] = (dtStamp / 256);
+        data[1] = Math.round(dtStamp / 256);
         data[2] = (tmStamp % 256);
-        data[3] = (tmStamp / 256);
+        data[3] = Math.round(tmStamp / 256);
         return data;
+    };
+    vpBase.uint16 = function (n) {
+        return n & 0xFFFF;
     };
     return vpBase;
 }());

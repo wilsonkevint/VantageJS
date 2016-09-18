@@ -8,6 +8,7 @@
     "email": "kwilson@1.com"
   },
   "dependencies": {
+    "linq": "^3.0.5",
     "moment": "^2.14.1",
     "promise": "^7.1.1",
     "serialport": "^4.0.1",

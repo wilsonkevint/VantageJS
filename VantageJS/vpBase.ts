@@ -7,6 +7,7 @@ export default class vpBase {
 
     public constructor(data: Uint8Array) {
         this._data = data;
+        this.dataIndx = 0;
     }
 
     nextByte() :number {
@@ -15,7 +16,7 @@ export default class vpBase {
         return val;
     }
 
-    nextDateTime(): Date {
+    nextDateTime(): any {
         var dt;
         var ardate = this.nextDecimal();
         var artime = this.nextDecimal();
@@ -24,20 +25,20 @@ export default class vpBase {
             return null;
         }
 
-        var yrs = ardate / 512 + 2000;
-        var months = ardate % 512 / 32;
-        var days = ardate % 512 % 32;
-        var hrs = artime / 100;
-        var min = artime % 100;
+        var yrs = vpBase.uint16(ardate / 512 + 2000);
+        var months = vpBase.uint16(ardate % 512 / 32);
+        var days = vpBase.uint16(ardate % 512 % 32);
+        var hrs = vpBase.uint16(artime / 100);
+        var min = vpBase.uint16(artime % 100);
 
         try {
-            dt = new moment(yrs.toString() + vpBase.pad(months, 2) + vpBase.pad(days, 2), 'YYYYMMDD');  
+            dt = new moment(yrs.toString() + vpBase.pad(months, 2) + vpBase.pad(days, 2) + vpBase.pad(hrs, 2) + vpBase.pad(min,2), 'YYYYMMDDHH:mm');  
         }
         catch (x) {
             return null;
         }
 
-        return dt.format('MM/DD/YYYY HH:mm'); 
+        return dt;
 
     }
 
@@ -147,20 +148,27 @@ export default class vpBase {
         return diff;
     }
 
-    static getDateTimeStamp(dt: any) : any {
+    static getDateTimeStamp(dt: string) : any {
         var dtStamp;
         var tmStamp;
 
-        dtStamp = (dt.Day + dt.Month * 32 + (dt.Year - 2000) * 512);
-        tmStamp = (dt.Hour * 100 + dt.Minute);
+        var mdt = moment(dt, 'MM/DD/YYYY'); 
+        var month = mdt.month() + 1; 
+
+        dtStamp = (mdt.date() + month * 32 + (mdt.year() - 2000) * 512);
+        tmStamp = (mdt.hour() * 100 + mdt.minute());
 
         var data = new Array(4);
         data[0] = (dtStamp % 256);
-        data[1] = (dtStamp / 256);
+        data[1] = Math.round(dtStamp / 256);
         data[2] = (tmStamp % 256);
-        data[3] = (tmStamp / 256);
+        data[3] = Math.round(tmStamp / 256);
 
         return data;
+    }
+
+    static uint16(n) {
+        return n & 0xFFFF;
     }
  
 }
