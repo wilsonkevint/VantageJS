@@ -18,7 +18,7 @@ export default class vantageWS {
     station: vpDevice;
     current: vpCurrent;
     hilows: vpHiLow;
-    pauseLoop: any;
+    pauseLoop: number;
     onCurrent: any;
     onHighLow: any;    
     config: any;
@@ -32,18 +32,17 @@ export default class vantageWS {
         this.config = config;
 
         this.station.onOpen = function () {
-            var ctimer;
-
-           
-
-            //self.getHiLows(); 
+            var ctimer;           
+                        
+            self.getHiLows(); 
 
             ctimer = setInterval(function () {
 
-                if (!self.pauseLoop) 
+                if (!self.pauseLoop)
                     self.getCurrent();
-
-               
+                else
+                    self.pauseLoop--;
+                                
 
             }, updateFreqMS);
         
@@ -54,26 +53,7 @@ export default class vantageWS {
         }, 60000 * 60); 
      
     }
-
-    getLoops() {
-        var self = this;
-
-        self.station.isAvailable().then(function () {
-
-            self.station.wakeUp().then(function (result) {
-
-                self.station.readLoop(10, function (data) {
-                    if (vpDevice.validateCRC(data)) {
-                        self.current = new vpCurrent(data);
-                        self.updateWU(self);
-                    }
-                });
-            });
-        }, function (err) {
-            console.log('hilows device not available');
-        });      
-        
-    }
+      
 
     getCurrent()  {
         var self = this;              
@@ -122,8 +102,9 @@ export default class vantageWS {
 
 
     getHiLows() {
-        this.pauseLoop = true;       
-        var self = this;        
+        var self = this;    
+        self.pauseLoop = 20 / self.config.updateFrequency;
+         
 
         self.station.isAvailable().then(function () {
 
@@ -137,8 +118,8 @@ export default class vantageWS {
                         if (self.onHighLow)
                             self.onHighLow(self.hilows);
 
-                        self.pauseLoop = false;
-
+                        self.pauseLoop = 0;
+                      
                     }
 
                 });
@@ -146,6 +127,7 @@ export default class vantageWS {
 
         }, function (err) {
             console.log('hilows device not available');
+            self.pauseLoop = 0;
         });
 
         self.getForeCast(); 

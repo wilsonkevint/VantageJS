@@ -17,31 +17,18 @@ var vantageWS = (function () {
         this.config = config;
         this.station.onOpen = function () {
             var ctimer;
-            //self.getHiLows(); 
+            self.getHiLows();
             ctimer = setInterval(function () {
                 if (!self.pauseLoop)
                     self.getCurrent();
+                else
+                    self.pauseLoop--;
             }, updateFreqMS);
         };
         setInterval(function () {
             self.getHiLows();
         }, 60000 * 60);
     }
-    vantageWS.prototype.getLoops = function () {
-        var self = this;
-        self.station.isAvailable().then(function () {
-            self.station.wakeUp().then(function (result) {
-                self.station.readLoop(10, function (data) {
-                    if (vpDevice_1.default.validateCRC(data)) {
-                        self.current = new vpCurrent_1.default(data);
-                        self.updateWU(self);
-                    }
-                });
-            });
-        }, function (err) {
-            console.log('hilows device not available');
-        });
-    };
     vantageWS.prototype.getCurrent = function () {
         var self = this;
         self.station.isAvailable().then(function () {
@@ -65,8 +52,8 @@ var vantageWS = (function () {
         };
     };
     vantageWS.prototype.getHiLows = function () {
-        this.pauseLoop = true;
         var self = this;
+        self.pauseLoop = 20 / self.config.updateFrequency;
         self.station.isAvailable().then(function () {
             self.station.wakeUp().then(function (result) {
                 self.station.getData("HILOWS", 438, true).then(function (data) {
@@ -75,12 +62,13 @@ var vantageWS = (function () {
                         self.hilows.dateLoaded = moment().format('YYYY-MM-DD hh:mm:ss');
                         if (self.onHighLow)
                             self.onHighLow(self.hilows);
-                        self.pauseLoop = false;
+                        self.pauseLoop = 0;
                     }
                 });
             });
         }, function (err) {
             console.log('hilows device not available');
+            self.pauseLoop = 0;
         });
         self.getForeCast();
     };
