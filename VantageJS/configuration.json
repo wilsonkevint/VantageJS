@@ -6,5 +6,5 @@
   "uploadHost": "weatherstation.wunderground.com",
   "uploadPath": "/weatherstation/updateweatherstation.php?ID=&PASSWORD=&dateutc=",
   "allowOrigins": [ "k2015.duckdns.org*", "localhost*", "raspberrypi","rpiquad" ],
-  "forecastUrl": "api.wunderground.com/api/1f78438595ddd788/forecast/q/OH/Akron.json"
+  "forecastUrl": "api.wunderground.com/api/token/forecast/q/OH/Akron.json"
 }
