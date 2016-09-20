@@ -4,7 +4,7 @@
   "win32_serialPort": "COM3",
   "linux_serialPort": "/dev/ttyUSB0",
   "uploadHost": "weatherstation.wunderground.com",
-  "uploadPath": "/weatherstation/updateweatherstation.php?ID=KOHAkron2&PASSWORD=1n5Kvp%f&dateutc=",
+  "uploadPath": "/weatherstation/updateweatherstation.php?ID=&PASSWORD=&dateutc=",
   "allowOrigins": [ "k2015.duckdns.org*", "localhost*", "raspberrypi","rpiquad" ],
   "forecastUrl": "api.wunderground.com/api/1f78438595ddd788/forecast/q/OH/Akron.json"
 }
