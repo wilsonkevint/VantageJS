@@ -20,6 +20,7 @@ var portOpened;
 var dataIndx;
 var current;
 var hilows;
+var forecast;
 var ctimer;
 
 comPort = config[os.platform() + '_serialPort'];
@@ -39,7 +40,7 @@ ws.onHighLow = function (hl) {
     hilows = hl;
     io.sockets.emit('hilows', JSON.stringify(hilows));
 }
-
+ 
 
 function webRequest(req, res) {       
     console.log('webRequest ' + moment().format('hh:mm:ss'));
@@ -66,6 +67,17 @@ function webRequest(req, res) {
         if (ws.hilows) {
             res.writeHead(200, { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': allowOrigins });
             res.end(JSON.stringify(ws.hilows));
+        }
+        else {
+            res.writeHead(200);
+            res.end("no data");
+        }
+    }
+
+    if (req.url.indexOf('forecast') > -1) {
+        if (ws.hilows) {
+            res.writeHead(200, { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': allowOrigins });
+            res.end(JSON.stringify(ws.forecast));
         }
         else {
             res.writeHead(200);

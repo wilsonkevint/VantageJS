@@ -48,7 +48,7 @@ var vpHiLow = (function (_super) {
     };
     vpHiLow.prototype.fTemperatureHL = function (outside) {
         var hilow = new hiLow();
-        //the sequence of low high is reversed inside vs outside (blame Davis developer)
+        //the sequence of low high is reversed inside vs outside (blame Davis)
         var dailyHi = this.fTemperature();
         var dailyLow = this.fTemperature();
         var dailyHighTime = this.nextTime();

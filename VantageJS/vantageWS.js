@@ -21,13 +21,16 @@ var vantageWS = (function () {
             ctimer = setInterval(function () {
                 if (!self.pauseLoop)
                     self.getCurrent();
-                else
+                else {
                     self.pauseLoop--;
+                }
+                if (self.pauseLoop != 0)
+                    console.log('pauseLoop: ' + self.pauseLoop);
             }, updateFreqMS);
         };
         setInterval(function () {
             self.getHiLows();
-        }, 60000 * 60);
+        }, 360000);
     }
     vantageWS.prototype.getCurrent = function () {
         var self = this;
@@ -51,9 +54,19 @@ var vantageWS = (function () {
             date: key, min: group.min(), max: group.max()
         };
     };
+    vantageWS.prototype.getArchives = function () {
+        var self = this;
+        self.pauseLoop = 30 / self.config.updateFrequency;
+        self.station.getArchived("09/17/2016 00:00", function (archives) {
+            var hiTemp;
+            var lowTemp;
+            hiTemp = linq.from(archives).groupBy('$.archiveDate', '$.outTemp', self.queryArchives)
+                .log("$.date + ' ' + $.min + ' ' + $.max").toJoinedString();
+        });
+    };
     vantageWS.prototype.getHiLows = function () {
         var self = this;
-        self.pauseLoop = 20 / self.config.updateFrequency;
+        self.pauseLoop = 25 / self.config.updateFrequency;
         self.station.isAvailable().then(function () {
             self.station.wakeUp().then(function (result) {
                 self.station.getData("HILOWS", 438, true).then(function (data) {
@@ -63,6 +76,7 @@ var vantageWS = (function () {
                         if (self.onHighLow)
                             self.onHighLow(self.hilows);
                         self.pauseLoop = 0;
+                        console.log('hi temp:' + self.hilows.outTemperature.dailyHi);
                     }
                 });
             });
@@ -132,6 +146,9 @@ var vantageWS = (function () {
                 forecast.txt_forecast.forecastday.forEach(function (period) {
                     self.forecast.periods.push(period);
                 });
+                self.hilows.forecast = self.forecast;
+                if (self.onHighLow)
+                    self.onHighLow(self.hilows);
             });
         }
     };

@@ -64,6 +64,7 @@ var vpDevice = (function () {
                         }
                     }
                     else {
+                        vpDevice.isBusy = false;
                         reject(data);
                     }
                 }
@@ -213,12 +214,14 @@ var vpDevice = (function () {
             }
             else {
                 var attempts = 0;
-                wtimer = setTimeout(function () {
+                wtimer = setInterval(function () {
                     if (!vpDevice.isBusy) {
+                        clearInterval(wtimer);
                         resolve();
                     }
                     attempts++;
-                    if (attempts > 40) {
+                    if (attempts > 60) {
+                        clearInterval(wtimer);
                         reject();
                     }
                 }, 500);

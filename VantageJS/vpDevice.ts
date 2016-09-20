@@ -50,7 +50,7 @@
         dataReceived(data: Uint8Array) {
         }        
 
-        errorReceived(err: any) {
+        errorReceived(err: any) {          
             vpDevice.isBusy = false;
         }
 
@@ -89,6 +89,7 @@
                             }
                         }
                         else {
+                            vpDevice.isBusy = false;
                             reject(data);
                         }
                     }
@@ -329,14 +330,16 @@
                 else {
                     var attempts = 0;
 
-                    wtimer = setTimeout(function () {
+                    wtimer = setInterval(function () {
                         if (!vpDevice.isBusy) {
+                            clearInterval(wtimer);
                             resolve();
                         }
 
                         attempts++;
 
-                        if (attempts > 40) {            //40 attempts @500ms = 20 secs
+                        if (attempts > 60) {            //60 attempts @500ms = 30 secs
+                            clearInterval(wtimer);
                             reject();
                         }
                     }, 500);

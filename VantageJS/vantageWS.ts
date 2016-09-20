@@ -37,11 +37,16 @@ export default class vantageWS {
             self.getHiLows(); 
 
             ctimer = setInterval(function () {
-
+                
                 if (!self.pauseLoop)
                     self.getCurrent();
-                else
+                else {
                     self.pauseLoop--;
+                   
+                }
+
+                if (self.pauseLoop != 0)
+                    console.log('pauseLoop: ' + self.pauseLoop); 
                                 
 
             }, updateFreqMS);
@@ -50,7 +55,7 @@ export default class vantageWS {
 
         setInterval(function () {
             self.getHiLows();
-        }, 60000 * 60); 
+        }, 360000); 
      
     }
       
@@ -60,33 +65,23 @@ export default class vantageWS {
 
         self.station.isAvailable().then(function () {
 
-            self.station.wakeUp().then(function (result) {
+        self.station.wakeUp().then(function (result) {
 
-                self.station.getData("LOOP 1", 99, true).then(function (data) {
+            self.station.getData("LOOP 1", 99, true).then(function (data) {
 
-                    if (vpDevice.validateCRC(data)) {
-                        self.current = new vpCurrent(data);
-                        self.updateWU(self);
+                if (vpDevice.validateCRC(data)) {
 
-                        if (self.onCurrent)
-                            self.onCurrent(self.current);
+                    self.current = new vpCurrent(data);
+                    self.updateWU(self);
 
-                        //self.pauseLoop = true;
+                    if (self.onCurrent)
+                        self.onCurrent(self.current);                    
 
-                        //self.station.getArchived("09/17/2016 00:00", function (archives) {
-                        //    var hiTemp;
-                        //    var lowTemp;
-                            
-                        //    hiTemp = linq.from(archives).groupBy('$.archiveDate', '$.outTemp', self.queryArchives)
-                        //        .log("$.date + ' ' + $.min + ' ' + $.max").toJoinedString();
-                            
-                       // }); 
+                }
 
-                    }
+            }, vantageWS.deviceError);
 
-                }, vantageWS.deviceError);
-
-            }, vantageWS.deviceError)
+        }, vantageWS.deviceError);
         
         }, function (err) {
             console.log('hilows device not available');
@@ -100,10 +95,23 @@ export default class vantageWS {
         }
     }
 
+    getArchives() {
+        var self = this;
+        self.pauseLoop = 30 / self.config.updateFrequency;
+
+        self.station.getArchived("09/17/2016 00:00", function (archives) {
+            var hiTemp;
+            var lowTemp;
+
+            hiTemp = linq.from(archives).groupBy('$.archiveDate', '$.outTemp', self.queryArchives)
+                .log("$.date + ' ' + $.min + ' ' + $.max").toJoinedString();
+
+        }); 
+    }
 
     getHiLows() {
         var self = this;    
-        self.pauseLoop = 20 / self.config.updateFrequency;
+        self.pauseLoop = 25 / self.config.updateFrequency;
          
 
         self.station.isAvailable().then(function () {
@@ -119,6 +127,8 @@ export default class vantageWS {
                             self.onHighLow(self.hilows);
 
                         self.pauseLoop = 0;
+
+                        console.log('hi temp:' + self.hilows.outTemperature.dailyHi);
                       
                     }
 
@@ -209,6 +219,12 @@ export default class vantageWS {
                 forecast.txt_forecast.forecastday.forEach(function (period) {
                     self.forecast.periods.push(period);
                 });
+
+                self.hilows.forecast = self.forecast;
+
+                if (self.onHighLow)
+                    self.onHighLow(self.hilows);
+               
             });
         }
     }

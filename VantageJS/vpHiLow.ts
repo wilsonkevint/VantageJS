@@ -41,6 +41,7 @@ export default class vpHiLow extends vpBase {
     rainHigh: hiLow;
     outHumidity: hiLow;
     dateLoaded: string;
+    forecast: any;
 
     fBarometerHL(): hiLow {
         var hilow = new hiLow();
@@ -72,7 +73,7 @@ export default class vpHiLow extends vpBase {
     fTemperatureHL(outside: boolean): hiLow {
         var hilow = new hiLow();
 
-        //the sequence of low high is reversed inside vs outside (blame Davis developer)
+        //the sequence of low high is reversed inside vs outside (blame Davis)
         var dailyHi = this.fTemperature();
         var dailyLow = this.fTemperature();
 
