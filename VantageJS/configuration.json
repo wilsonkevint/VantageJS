@@ -10,6 +10,6 @@
   "wuAlertUrl": "api.wunderground.com/api/${token}/alerts/q/${state}/${city}.json",
   "wuCityState": "Akron,OH",
   "wuUserID": "KOHAkron2",
-  "wuPassword": "1n5Kvp%f",
-  "wuToken": "1f78438595ddd788"
+  "wuPassword": "",
+  "wuToken": ""
 }
