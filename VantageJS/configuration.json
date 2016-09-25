@@ -8,7 +8,7 @@
   "allowOrigins": [ "http://k2015.duckdns.org", "http://dellws", "http://raspberrypi", "http://rpiquad" ],
   "forecastUrl": "api.wunderground.com/api/${token}/forecast/q/${state}/${city}.json",
   "wuAlertUrl": "api.wunderground.com/api/${token}/alerts/q/${state}/${city}.json",
-  "alertCityState": "San%20Diego,CA",
+  "wuCityState": "Akron,OH",
   "wuUserID": "KOHAkron2",
   "wuPassword": "1n5Kvp%f",
   "wuToken": "1f78438595ddd788"

@@ -6,7 +6,8 @@ import vpHiLow from './vpHiLow';
 import vpBase from './vpBase';
 import vpArchive from './vpArchive';
 import webRequest from './webRequest';
-import weatherUG from './wunderGround';
+import wunderGround from './wunderGround';
+import weatherAlert from './weatherAlert';
 
 var moment = require('moment');
 var http = require('http');
@@ -23,9 +24,11 @@ export default class vantageWS {
     pauseLoop: number;
     onCurrent: any;
     onHighLow: any;    
+    onAlert: any;
     config: any;
     forecast: any;
-    wunderGround: weatherUG;
+    wu: wunderGround;
+    alerts: Array<weatherAlert>;
         
     public constructor(comPort: string, config: any) {
         this.station = new vpDevice(comPort);
@@ -33,7 +36,9 @@ export default class vantageWS {
         var updateFreqMS = config.updateFrequency * 1000;
       
         this.config = config;
-        this.wunderGround = new weatherUG();
+        this.wu = new wunderGround(config);
+
+        this.getAlerts(); 
 
         this.station.onOpen = function () {
             var ctimer;           
@@ -76,7 +81,7 @@ export default class vantageWS {
                 if (vpDevice.validateCRC(data)) {
 
                     self.current = new vpCurrent(data);
-                    self.wunderGround.upload(self.current);
+                    self.wu.upload(self.current);
 
                     if (self.onCurrent)
                         self.onCurrent(self.current);                    
@@ -131,7 +136,7 @@ export default class vantageWS {
                             self.onHighLow(self.hilows);
 
                         self.getForeCast(); 
-
+                        
                         self.pauseLoop = 0;
 
                         console.log('hi temp:' + self.hilows.outTemperature.dailyHi);
@@ -158,28 +163,38 @@ export default class vantageWS {
 
     getForeCast(): any {      
         var last;          
+        var self = this; 
 
         if (this.forecast) {
             last = vpBase.timeDiff(this.forecast.last, 'h');            
         }
 
         if (!last || last >= 4) {
-            this.wunderGround.getForeCast().then(forecast => {
+            this.wu.getForeCast().then(forecast => {
+                self.forecast = forecast;
+                self.hilows.forecast = forecast;
             });            
         }
     }
 
+    getAlerts() {
+        var self = this; 
 
+        var doalerts = function () {
+            self.wu.getAlerts().then(alerts => {
+                self.alerts = alerts;
+                if (alerts.length && self.onAlert) {
+                    self.onAlert(alerts);
+                }
+            });
+        }
 
-    
+        doalerts();
 
-    
-   
-
-   
-
-
-     
+        setInterval(function () {
+            doalerts();
+        }, 60000 * 15);
+    }
 
 }
 

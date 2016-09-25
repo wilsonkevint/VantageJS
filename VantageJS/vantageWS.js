@@ -16,7 +16,8 @@ var vantageWS = (function () {
         var self = this;
         var updateFreqMS = config.updateFrequency * 1000;
         this.config = config;
-        this.wunderGround = new wunderGround_1.default();
+        this.wu = new wunderGround_1.default(config);
+        this.getAlerts();
         this.station.onOpen = function () {
             var ctimer;
             self.getHiLows();
@@ -41,7 +42,7 @@ var vantageWS = (function () {
                 self.station.getData("LOOP 1", 99, true).then(function (data) {
                     if (vpDevice_1.default.validateCRC(data)) {
                         self.current = new vpCurrent_1.default(data);
-                        self.wunderGround.upload(self.current);
+                        self.wu.upload(self.current);
                         if (self.onCurrent)
                             self.onCurrent(self.current);
                     }
@@ -93,13 +94,31 @@ var vantageWS = (function () {
     };
     vantageWS.prototype.getForeCast = function () {
         var last;
+        var self = this;
         if (this.forecast) {
             last = vpBase_1.default.timeDiff(this.forecast.last, 'h');
         }
         if (!last || last >= 4) {
-            this.wunderGround.getForeCast().then(function (forecast) {
+            this.wu.getForeCast().then(function (forecast) {
+                self.forecast = forecast;
+                self.hilows.forecast = forecast;
             });
         }
+    };
+    vantageWS.prototype.getAlerts = function () {
+        var self = this;
+        var doalerts = function () {
+            self.wu.getAlerts().then(function (alerts) {
+                self.alerts = alerts;
+                if (alerts.length && self.onAlert) {
+                    self.onAlert(alerts);
+                }
+            });
+        };
+        doalerts();
+        setInterval(function () {
+            doalerts();
+        }, 60000 * 15);
     };
     return vantageWS;
 }());

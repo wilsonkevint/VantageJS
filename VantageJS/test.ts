@@ -1,12 +1,12 @@
 ﻿declare function require(name: string);
 
-import weatherUG from './weatherUG';
+import weatherUG from './wunderGround';
 import weatherAlert from './weatherAlert';
 
 var config = require('./configuration.json');
 
-var wunderG = new weatherUG(); 
+var wunderG = new weatherUG(config); 
 
-wunderG.getAlerts(config).then(alert => {
+wunderG.getAlerts().then(alert => {
     console.dir(alert);
 });

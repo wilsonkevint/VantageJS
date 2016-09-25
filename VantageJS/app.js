@@ -28,6 +28,9 @@ ws.onHighLow = function (hl) {
     hilows = hl;
     io.sockets.emit('hilows', JSON.stringify(hilows));
 };
+ws.onAlert = function (alerts) {
+    io.sockets.emit('alerts', JSON.stringify(alerts));
+};
 function requestReceived(req, res) {
     console.log('webRequest ' + moment().format('hh:mm:ss'));
     var allowOrigins = config.allowOrigins[0];
@@ -82,6 +85,8 @@ function webSocket() {
             socket.emit('current', JSON.stringify(ws.current));
         if (ws.hilows)
             socket.emit('hilows', JSON.stringify(ws.hilows));
+        if (ws.alerts)
+            socket.emit('alerts', JSON.stringify(ws.alerts));
         socket.on('hilows', function (data) {
             ws.getHiLows();
         });

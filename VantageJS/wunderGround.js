@@ -9,7 +9,7 @@ var wunderGround = (function () {
     }
     wunderGround.prototype.getAlerts = function () {
         var config = this.config;
-        var cityState = config.alertCityState.split(',');
+        var cityState = config.wuCityState.split(',');
         if (cityState.length != 2)
             return;
         var city = cityState[0];
@@ -54,7 +54,7 @@ var wunderGround = (function () {
         try {
             var request = http.request(options, function (response) {
                 response.on('data', function (chunk) {
-                    console.log('update WU: ' + String.fromCharCode.apply(null, chunk) + moment().format('HH:mm:ss') + ' temp:' + current.outTemperature);
+                    //console.log('update WU: ' + String.fromCharCode.apply(null, chunk) + moment().format('HH:mm:ss') + ' temp:' + current.outTemperature);
                 });
                 response.on('timeout', function (socket) {
                     console.log('resp timeout');
@@ -81,7 +81,12 @@ var wunderGround = (function () {
         if (!config.forecastUrl) {
             return;
         }
-        return webRequest_1.default.get(config.forecastUrl, null).then(function (data) {
+        var token = config.wuToken;
+        var cityState = config.wuCityState.split(',');
+        var city = cityState[0];
+        var state = cityState[1];
+        var url = eval('`' + config.forecastUrl + '`');
+        return webRequest_1.default.get(url, null).then(function (data) {
             var wforecast = JSON.parse(data).forecast;
             var forecast = { last: new Date(), periods: [] };
             wforecast.txt_forecast.forecastday.forEach(function (period) {
@@ -94,4 +99,4 @@ var wunderGround = (function () {
 }());
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.default = wunderGround;
-//# sourceMappingURL=wunderground.js.map
+//# sourceMappingURL=wunderGround.js.map

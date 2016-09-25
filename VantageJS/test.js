@@ -1,8 +1,8 @@
 "use strict";
-var weatherUG_1 = require('./weatherUG');
+var wunderGround_1 = require('./wunderGround');
 var config = require('./configuration.json');
-var wunderG = new weatherUG_1.default();
-wunderG.getAlerts(config).then(function (alert) {
+var wunderG = new wunderGround_1.default(config);
+wunderG.getAlerts().then(function (alert) {
     console.dir(alert);
 });
 //# sourceMappingURL=test.js.map

@@ -1,7 +1,8 @@
-﻿import webRequest from './webRequest';
+﻿declare function require(name: string);
+
+import webRequest from './webRequest';
 import weatherAlert from './weatherAlert';
 import vpCurrent from './vpCurrent';
-declare function require(name: string);
 var moment = require('moment');
 var http = require('http');
 
@@ -14,7 +15,7 @@ export default class wunderGround {
 
     getAlerts() {
         var config = this.config;
-        var cityState = config.alertCityState.split(',');
+        var cityState = config.wuCityState.split(',');
         if (cityState.length != 2)
             return;
 
@@ -71,7 +72,7 @@ export default class wunderGround {
         try {
             var request = http.request(options, function (response) {
                 response.on('data', function (chunk) {
-                    console.log('update WU: ' + String.fromCharCode.apply(null, chunk) + moment().format('HH:mm:ss') + ' temp:' + current.outTemperature);
+                    //console.log('update WU: ' + String.fromCharCode.apply(null, chunk) + moment().format('HH:mm:ss') + ' temp:' + current.outTemperature);
                 });
                 response.on('timeout', function (socket) {
                     console.log('resp timeout');
@@ -101,7 +102,13 @@ export default class wunderGround {
             return;
         }
 
-        return webRequest.get(config.forecastUrl, null).then(function (data) {
+        var token = config.wuToken; 
+        var cityState = config.wuCityState.split(','); 
+        var city = cityState[0];
+        var state = cityState[1]; 
+        var url = eval('`' + config.forecastUrl + '`'); 
+
+        return webRequest.get(url, null).then(function (data) {
             var wforecast = JSON.parse(data).forecast;
             var forecast = { last: new Date(), periods: [] };
 
