@@ -8,7 +8,7 @@ import vpHiLow from './vpHiLow';
 var moment = require('moment');
 var http = require('http');
 
-var server = http.createServer(webRequest);
+var server = http.createServer(requestReceived);
 var io = require('socket.io')(server);
 var os = require('os'); 
 var config = require('./configuration.json');
@@ -42,26 +42,26 @@ ws.onHighLow = function (hl) {
 }
  
 
-function webRequest(req, res) {       
+function requestReceived(req, res) {       
     console.log('webRequest ' + moment().format('hh:mm:ss'));
     var allowOrigins  = config.allowOrigins[0];
 
-    var referer = req.headers.host.split(':'); 
-    referer = referer[0];
+    //console.dir(req.headers); 
+    var origin = req.headers.origin;    
 
-    var origin = config.allowOrigins.filter(function (o) {
-        if (o.startsWith(referer))
+    var allowOrigin = config.allowOrigins.filter(function (o) {
+        if (o.includes(origin))
             return true;
         else
             return false;
     });
 
-    if (origin.length)
-        allowOrigins = origin[0];
+    if (allowOrigin.length)
+        allowOrigins = allowOrigin[0];
 
     console.log(allowOrigins);
 
-    allowOrigins = '*';
+    //allowOrigins = '*';
 
     if (req.url.indexOf('hilows') > -1) {
         if (ws.hilows) {

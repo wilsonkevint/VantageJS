@@ -187,11 +187,15 @@ var vpDevice = (function () {
             vpDevice.isBusy = true;
             self.port.write('\n');
             self.dataReceived = function (data) {
-                if (data.length == 2 && data[0] == 10 && data[1] == 13)
+                if (data.length == 2 && data[0] == 10 && data[1] == 13) {
+                    vpDevice.isBusy = false;
                     resolve(true);
+                }
                 else {
-                    if (attempts > 2)
+                    if (attempts > 2) {
+                        vpDevice.isBusy = false;
                         reject(false);
+                    }
                     else
                         setTimeout(function () {
                             self.port.write('\n');
@@ -222,6 +226,7 @@ var vpDevice = (function () {
                     attempts++;
                     if (attempts > 60) {
                         clearInterval(wtimer);
+                        vpDevice.isBusy = false;
                         reject();
                     }
                 }, 500);

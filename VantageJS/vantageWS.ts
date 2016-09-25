@@ -5,6 +5,8 @@ import vpCurrent from './vpCurrent';
 import vpHiLow from './vpHiLow';
 import vpBase from './vpBase';
 import vpArchive from './vpArchive';
+import webRequest from './webRequest';
+import weatherUG from './wunderGround';
 
 var moment = require('moment');
 var http = require('http');
@@ -23,6 +25,7 @@ export default class vantageWS {
     onHighLow: any;    
     config: any;
     forecast: any;
+    wunderGround: weatherUG;
         
     public constructor(comPort: string, config: any) {
         this.station = new vpDevice(comPort);
@@ -30,6 +33,7 @@ export default class vantageWS {
         var updateFreqMS = config.updateFrequency * 1000;
       
         this.config = config;
+        this.wunderGround = new weatherUG();
 
         this.station.onOpen = function () {
             var ctimer;           
@@ -72,7 +76,7 @@ export default class vantageWS {
                 if (vpDevice.validateCRC(data)) {
 
                     self.current = new vpCurrent(data);
-                    self.updateWU(self);
+                    self.wunderGround.upload(self.current);
 
                     if (self.onCurrent)
                         self.onCurrent(self.current);                    
@@ -126,6 +130,8 @@ export default class vantageWS {
                         if (self.onHighLow)
                             self.onHighLow(self.hilows);
 
+                        self.getForeCast(); 
+
                         self.pauseLoop = 0;
 
                         console.log('hi temp:' + self.hilows.outTemperature.dailyHi);
@@ -140,7 +146,7 @@ export default class vantageWS {
             self.pauseLoop = 0;
         });
 
-        self.getForeCast(); 
+      
 
     }
 
@@ -148,143 +154,24 @@ export default class vantageWS {
     static deviceError(err) {
         console.log(err);
     }
+       
 
-    updateWU(self: vantageWS) {
-        var current = self.current;
-        var path = self.config.uploadPath + moment().utc().format('YYYY-MM-DD HH:mm:ss').replace(' ', '%20')
-            + '&winddir=' + current.windDir + '&windspeedmph=' + current.windAvg
-            + '&windgustmph=' + current.windSpeed + '&tempf=' + current.outTemperature
-            + '&rainin=' + current.rainRate + '&dailyrainin=' + current.dayRain + '&baromin=' + current.barometer
-            + '&humidity=' + current.outHumidity + '&dewptf=' + current.dewpoint
-            + '&weather=&clouds='
-            + '&softwaretype=custom&action=updateraw';
-
-        var options = {
-            host: self.config.uploadHost,
-            port: 80,
-            path: path,
-            method: 'get',
-            timeout: 4000
-        }
-
-        try {
-            var request = http.request(options, function (response) {
-                response.on('data', function (chunk) {
-                    console.log('update WU: ' + String.fromCharCode.apply(null, chunk) + moment().format('HH:mm:ss') + ' temp:' + current.outTemperature);
-                });
-                response.on('timeout', function (socket) {
-                    console.log('resp timeout');
-                });
-                response.on('error', function (err) {
-                    console.log('resp error' + err);
-                });
-            });
-
-            request.on('error', function (err) {
-                console.log('request error ' + err);
-            });
-
-            request.setTimeout(30000, function () {
-                console.log('request timeout');
-            });
-
-            request.end();
-
-        }
-        catch (ex) {
-            console.log('updateWU exception');
-            console.log(ex);
-        }
-
-    }
-
-    getForeCast(): any {
-        var self = this;
-        var last; 
-
-        if (!self.config.forecastUrl) {
-            return;
-        }
+    getForeCast(): any {      
+        var last;          
 
         if (this.forecast) {
             last = vpBase.timeDiff(this.forecast.last, 'h');            
         }
 
         if (!last || last >= 4) {
-
-            self.getWebRequest(self.config.forecastUrl,null).then(function (data) {
-                var forecast = JSON.parse(data).forecast;
-                self.forecast = {last: new Date(), periods:[]}; 
-
-                forecast.txt_forecast.forecastday.forEach(function (period) {
-                    self.forecast.periods.push(period);
-                });
-
-                self.hilows.forecast = self.forecast;
-
-                if (self.onHighLow)
-                    self.onHighLow(self.hilows);
-               
-            });
+            this.wunderGround.getForeCast().then(forecast => {
+            });            
         }
     }
 
 
 
-    getWebRequest(host: string, path: string): any {
-
-        if (!path) {
-            path = host.substr(host.indexOf('/') -1 + 1);
-            host = host.substr(0, host.indexOf('/')); 
-        }
-        var options = {
-            host: host,
-            port: 80,
-            path: path,
-            method: 'get',
-            timeout: 4000
-        }
-
-        var promise = new Promise(function (resolve, reject) {
-            var resultData = '';
-
-            try {
-                var request = http.request(options, function (response) {
-                    response.on('data', function (chunk, len) {
-
-                        resultData += String.fromCharCode.apply(null, chunk); 
-                        if (resultData.length == this.headers['content-length'])
-                            resolve(resultData);
-                        
-                    });
-                    response.on('timeout', function (socket) {
-                        reject();
-                    });
-                    response.on('error', function (err) {
-                        reject(err);
-                    });
-                });
-
-                request.on('error', function (err) {
-                    reject(err);
-                });
-
-                request.setTimeout(30000, function () {
-                    reject('timeout');
-                });
-
-                request.end();
-
-            }
-            catch (ex) {
-                console.log('getWebRequest exception');
-                console.log(ex);
-                reject(ex);
-            }
-        });
-
-        return promise;
-    }
+    
 
     
    

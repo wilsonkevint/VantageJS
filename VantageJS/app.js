@@ -2,7 +2,7 @@
 var vantageWS_1 = require('./vantageWS');
 var moment = require('moment');
 var http = require('http');
-var server = http.createServer(webRequest);
+var server = http.createServer(requestReceived);
 var io = require('socket.io')(server);
 var os = require('os');
 var config = require('./configuration.json');
@@ -28,21 +28,21 @@ ws.onHighLow = function (hl) {
     hilows = hl;
     io.sockets.emit('hilows', JSON.stringify(hilows));
 };
-function webRequest(req, res) {
+function requestReceived(req, res) {
     console.log('webRequest ' + moment().format('hh:mm:ss'));
     var allowOrigins = config.allowOrigins[0];
-    var referer = req.headers.host.split(':');
-    referer = referer[0];
-    var origin = config.allowOrigins.filter(function (o) {
-        if (o.startsWith(referer))
+    //console.dir(req.headers); 
+    var origin = req.headers.origin;
+    var allowOrigin = config.allowOrigins.filter(function (o) {
+        if (o.includes(origin))
             return true;
         else
             return false;
     });
-    if (origin.length)
-        allowOrigins = origin[0];
+    if (allowOrigin.length)
+        allowOrigins = allowOrigin[0];
     console.log(allowOrigins);
-    allowOrigins = '*';
+    //allowOrigins = '*';
     if (req.url.indexOf('hilows') > -1) {
         if (ws.hilows) {
             res.writeHead(200, { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': allowOrigins });

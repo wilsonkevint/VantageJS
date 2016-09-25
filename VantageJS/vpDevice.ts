@@ -294,11 +294,15 @@
 
                 self.dataReceived = function (data: Uint8Array) {
 
-                    if (data.length == 2 && data[0] == 10 && data[1] == 13)
+                    if (data.length == 2 && data[0] == 10 && data[1] == 13) {
+                        vpDevice.isBusy = false;
                         resolve(true);
+                    }
                     else {
-                        if (attempts > 2)
-                            reject(false); 
+                        if (attempts > 2) {
+                            vpDevice.isBusy = false;
+                            reject(false);
+                        }
                         else  
                             setTimeout(function () {
                                 self.port.write('\n');
@@ -340,6 +344,7 @@
 
                         if (attempts > 60) {            //60 attempts @500ms = 30 secs
                             clearInterval(wtimer);
+                            vpDevice.isBusy = false;
                             reject();
                         }
                     }, 500);

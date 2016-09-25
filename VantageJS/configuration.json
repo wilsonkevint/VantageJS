@@ -3,8 +3,13 @@
   "webPort": 9000,
   "win32_serialPort": "COM3",
   "linux_serialPort": "/dev/ttyUSB0",
-  "uploadHost": "weatherstation.wunderground.com",
-  "uploadPath": "/weatherstation/updateweatherstation.php?ID=KOHAkron2&PASSWORD=1n5Kvp%f&dateutc=",
-  "allowOrigins": [ "k2015.duckdns.org*", "localhost*", "raspberrypi","rpiquad" ],
-  "forecastUrl": "api.wunderground.com/api/1f78438595ddd788/forecast/q/OH/Akron.json"
+  "uploadHost": "rtupdate.wunderground.com",
+  "uploadPath": "/weatherstation/updateweatherstation.php?ID=${wuUserID}&PASSWORD=${wuPassword}&dateutc=${dateutc}",
+  "allowOrigins": [ "http://k2015.duckdns.org", "http://dellws", "http://raspberrypi", "http://rpiquad" ],
+  "forecastUrl": "api.wunderground.com/api/${token}/forecast/q/${state}/${city}.json",
+  "wuAlertUrl": "api.wunderground.com/api/${token}/alerts/q/${state}/${city}.json",
+  "alertCityState": "San%20Diego,CA",
+  "wuUserID": "KOHAkron2",
+  "wuPassword": "1n5Kvp%f",
+  "wuToken": "1f78438595ddd788"
 }

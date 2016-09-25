@@ -15,7 +15,7 @@
     <SchemaVersion>2.0</SchemaVersion>
     <ProjectGuid>00140fbe-f484-4813-b14c-6f7b07dfb50a</ProjectGuid>
     <ProjectHome>.</ProjectHome>
-    <StartupFile>app.ts</StartupFile>
+    <StartupFile>test.ts</StartupFile>
     <StartWebBrowser>False</StartWebBrowser>
     <SearchPath>
     </SearchPath>
@@ -38,12 +38,16 @@
   </ItemGroup>
   <ItemGroup>
     <TypeScriptCompile Include="app.ts" />
+    <TypeScriptCompile Include="test.ts" />
     <TypeScriptCompile Include="vpArchive.ts" />
     <TypeScriptCompile Include="vpBase.ts" />
     <TypeScriptCompile Include="vpCurrent.ts" />
     <TypeScriptCompile Include="vpDevice.ts" />
     <TypeScriptCompile Include="vpHiLow.ts" />
     <TypeScriptCompile Include="vantageWS.ts" />
+    <TypeScriptCompile Include="weatherAlert.ts" />
+    <TypeScriptCompile Include="webRequest.ts" />
+    <TypeScriptCompile Include="wunderGround.ts" />
   </ItemGroup>
   <!-- Do not delete the following Import Project.  While this appears to do nothing it is a marker for setting TypeScript properties before our import that depends on them. -->
   <Import Project="$(MSBuildExtensionsPath32)\Microsoft\VisualStudio\v$(VisualStudioVersion)\TypeScript\Microsoft.TypeScript.targets" Condition="False" />
