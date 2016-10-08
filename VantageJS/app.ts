@@ -11,7 +11,7 @@ var http = require('http');
 var server = http.createServer(requestReceived);
 var io = require('socket.io')(server);
 var os = require('os'); 
-var config = require('./configuration.json');
+var config = require('./VantageJS.json');
 
 var comPort; 
 var webPort;
@@ -31,16 +31,16 @@ webSocket();
 
 let ws = new vantageWS(comPort, config);
 
-ws.onCurrent = function (cur) {
+ws.onCurrent = cur => {
     current = cur;
     io.sockets.emit('current', JSON.stringify(current));
 }
 
-ws.onHighLow = function (hl) {
+ws.onHighLow = hl => {
     hilows = hl;
     io.sockets.emit('hilows', JSON.stringify(hilows));
 }
-ws.onAlert = function (alerts) {
+ws.onAlert = alerts => {
     io.sockets.emit('alerts', JSON.stringify(alerts));
 }
  

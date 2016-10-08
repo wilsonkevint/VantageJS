@@ -1,16 +1,16 @@
 "use strict";
 var moment = require('moment');
-var vpBase = (function () {
-    function vpBase(data) {
+class vpBase {
+    constructor(data) {
         this._data = data;
         this.dataIndx = 0;
     }
-    vpBase.prototype.nextByte = function () {
+    nextByte() {
         var val = this._data[this.dataIndx];
         this.dataIndx += 1;
         return val;
-    };
-    vpBase.prototype.nextDateTime = function () {
+    }
+    nextDateTime() {
         var dt;
         var ardate = this.nextDecimal();
         var artime = this.nextDecimal();
@@ -29,13 +29,13 @@ var vpBase = (function () {
             return null;
         }
         return dt;
-    };
-    vpBase.prototype.nextDecimal = function () {
+    }
+    nextDecimal() {
         var byte1 = this.nextByte();
         var byte2 = this.nextByte();
         return byte2 * 256 + byte1;
-    };
-    vpBase.prototype.nextTime = function () {
+    }
+    nextTime() {
         var time = this.nextDecimal();
         var tm;
         if (time != 65535) {
@@ -45,19 +45,19 @@ var vpBase = (function () {
         else
             return "";
         return moment().hours(hrs).minutes(mins).format('h:mm a');
-    };
-    vpBase.prototype.peek = function (offset) {
+    }
+    peek(offset) {
         return this._data[this.dataIndx + offset];
-    };
-    vpBase.round = function (value, precision) {
+    }
+    static round(value, precision) {
         var multiplier = Math.pow(10, precision || 0);
         return Math.round(value * multiplier) / multiplier;
-    };
-    vpBase.prototype.fBarometer = function () {
+    }
+    fBarometer() {
         var barom = this.nextDecimal() / 1000;
         return vpBase.round(barom, 2);
-    };
-    vpBase.prototype.fTemperature = function () {
+    }
+    fTemperature() {
         var temp1 = this.peek(0);
         var temp2 = this.peek(1);
         var temp = this.nextDecimal();
@@ -69,14 +69,14 @@ var vpBase = (function () {
         catch (x) {
         }
         return temp;
-    };
-    vpBase.prototype.fRain = function () {
+    }
+    fRain() {
         var rain = this.nextDecimal();
         if (rain == 65535)
             rain = 0;
         return vpBase.round(rain, 2) / 100;
-    };
-    vpBase.date = function (dt) {
+    }
+    static date(dt) {
         if (dt == 65535 || dt == 0)
             return null;
         var yrs = (dt & 0x7f) + 2000;
@@ -85,12 +85,12 @@ var vpBase = (function () {
         var mdt = yrs.toString() + ' ' + vpBase.pad(month, 2) + ' ' + vpBase.pad(days, 2);
         mdt = moment(mdt, 'YYYY MM DD').format('MM/DD/YYYY');
         return mdt;
-    };
-    vpBase.pad = function (num, size) {
+    }
+    static pad(num, size) {
         var s = "000000000" + num;
         return s.substr(s.length - size);
-    };
-    vpBase.timeDiff = function (dt, type) {
+    }
+    static timeDiff(dt, type) {
         var diff = new Date().getMilliseconds() - dt.getMilliseconds();
         diff = Math.abs(diff);
         var seconds = Math.floor(diff / 1000);
@@ -108,8 +108,8 @@ var vpBase = (function () {
                 break;
         }
         return diff;
-    };
-    vpBase.getDateTimeStamp = function (dt) {
+    }
+    static getDateTimeStamp(dt) {
         var dtStamp;
         var tmStamp;
         var mdt = moment(dt, 'MM/DD/YYYY');
@@ -122,12 +122,11 @@ var vpBase = (function () {
         data[2] = (tmStamp % 256);
         data[3] = Math.round(tmStamp / 256);
         return data;
-    };
-    vpBase.uint16 = function (n) {
+    }
+    static uint16(n) {
         return n & 0xFFFF;
-    };
-    return vpBase;
-}());
+    }
+}
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.default = vpBase;
 //# sourceMappingURL=vpBase.js.map

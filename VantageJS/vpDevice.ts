@@ -1,13 +1,10 @@
-﻿
-
-    declare function require(name: string);
+﻿    declare function require(name: string);
     import vpBase from './vpBase';
     import vpArchive from './vpArchive';
 
     var moment = require('moment');
     var SerialPort = require("serialport");
-    var Promise = require('promise');
-
+    
     export default class vpDevice {
         portName: string;
         port: any;
@@ -15,7 +12,7 @@
         static isBusy: boolean;
      
         public constructor(comPort: string) {        
-            var self = this;   
+           
             this.portName = comPort;
 
             this.port = new SerialPort(comPort, {
@@ -26,23 +23,23 @@
                 parser: SerialPort.parsers.raw
             });
 
-            this.port.on('open', function (data) {
-                if (self.onOpen)
-                    self.onOpen();
+            this.port.on('open',data => {
+                if (this.onOpen)
+                    this.onOpen();
                 console.log('comport open');
             });
 
-            this.port.on('close', function () {
+            this.port.on('close', ()=> {
                 console.log('comport closed');
             });
 
-            this.port.on('error', function (err) {
-                self.errorReceived(err); 
+            this.port.on('error',err => {
+                this.errorReceived(err); 
                 console.log('comport ' + err);
             });
 
-            this.port.on('data', function (data: Uint8Array) {
-                self.dataReceived(data);
+            this.port.on('data', (data: Uint8Array) => {
+                this.dataReceived(data);
             });
         }
 
@@ -55,7 +52,7 @@
         }
 
         readLoop(loops: number, callback: any) {
-            this.dataReceived = function (data) {
+            this.dataReceived =data => {
                 callback(data); 
             }
 
@@ -63,18 +60,17 @@
         }
               
         getData(cmd: any, reqchars: number, expectAck: boolean): any {
-            var self = this; 
-
-            var promise = new Promise(function (resolve, reject) {
+           
+            var promise = new Promise((resolve, reject) => {
                 var received = [];
                 vpDevice.isBusy = true;
 
                 if (typeof cmd == 'string')
-                    self.port.write(cmd + '\n');
+                    this.port.write(cmd + '\n');
                 else
-                    self.port.write(cmd);
+                    this.port.write(cmd);
 
-                self.dataReceived = function (data: Uint8Array) {
+                this.dataReceived = (data: Uint8Array) => {
 
                     if (expectAck) {
                         if (data[0] == 6) {
@@ -103,7 +99,7 @@
                     }
                 }
 
-                self.errorReceived = function (err: any) {
+                this.errorReceived = err => {
                     vpDevice.isBusy = false;
                     reject(err);
                 }
@@ -114,24 +110,21 @@
         }
 
         getArchived(startDate: string, callback:any) {
-            var archives;
-                        
-            var self = this;
+            var archives;           
             
-            self.isAvailable().then(function () {
+            this.isAvailable().then(() => {
 
-                self.wakeUp().then(function (result) {
+                this.wakeUp().then(result => {
 
-                    self.getData("DMPAFT", 1,true).then(function (data) {
-                        self.sendArchiveTS(startDate, callback);                          
+                    this.getData("DMPAFT", 1,true).then(data => {
+                        this.sendArchiveTS(startDate, callback);                          
                     });
                 });
             });
 
         }
 
-        sendArchiveTS(startDate: any, callback:any) {
-            var self = this;
+        sendArchiveTS(startDate: any, callback:any) {           
 
             var start = moment(startDate, 'MM/DD/YYYY hh:mm');
             var stamp = vpBase.getDateTimeStamp(start);
@@ -143,14 +136,14 @@
             Array.prototype.push.apply(buffer, stamp);
             Array.prototype.push.apply(buffer, crcTS);    
 
-            self.getData(buffer, 6,true).then(function (data) {
-                self.retrieveArchive(data, callback);     
-            }, function (err) {
+            this.getData(buffer, 6,true).then(data => {
+                this.retrieveArchive(data, callback);     
+            },err => {
                 if (attempts < 4) {
                     attempts++;
 
-                    setTimeout(function () {
-                        self.sendArchiveTS(buffer, callback);                      
+                    setTimeout(() => {
+                        this.sendArchiveTS(buffer, callback);                      
                     }, 500);
                 }
                 else {
@@ -162,7 +155,7 @@
         }
 
         retrieveArchive(buffer: any, callback:any) {
-            var self = this;
+            
             var base = new vpBase(new Uint8Array(buffer));
             var pgCount = base.nextDecimal();
             var firstRecord = base.nextDecimal();
@@ -172,7 +165,7 @@
 
             console.log('retrieving ' + pgCount + ' pages'); 
             
-            self.dataReceived = function (data) {
+            this.dataReceived =data => {
 
                 if (received.length < 267)
                     received.push.apply(received, data);
@@ -203,12 +196,12 @@
                             callback(archives);
                         }
                         else {
-                            self.port.write([6]);
+                            this.port.write([6]);
                         }
 
                     }
                     else {
-                        self.port.write(0x21);                  //crc error.. request send again
+                        this.port.write(0x21);                  //crc error.. request send again
                     }
 
                 }     
@@ -217,7 +210,7 @@
                             
             }
 
-            self.port.write([6]);         //acknowledge- start download
+            this.port.write([6]);         //acknowledge- start download
         }
 
 
@@ -284,15 +277,15 @@
         }       
 
         wakeUp(): any {
-            var self = this;
+           
             var attempts = 0; 
 
-            var promise = new Promise(function (resolve, reject) {
+            var promise = new Promise((resolve, reject) => {
                 vpDevice.isBusy = true; 
 
-                self.port.write('\n');
+                this.port.write('\n');
 
-                self.dataReceived = function (data: Uint8Array) {
+                this.dataReceived = (data: Uint8Array) => {
 
                     if (data.length == 2 && data[0] == 10 && data[1] == 13) {
                         vpDevice.isBusy = false;
@@ -304,8 +297,8 @@
                             reject(false);
                         }
                         else  
-                            setTimeout(function () {
-                                self.port.write('\n');
+                            setTimeout(() => {
+                                this.port.write('\n');
                             }, 1000);
 
                         attempts++;
@@ -313,7 +306,7 @@
                         
                 }
 
-                self.errorReceived = function (err: any) {
+                this.errorReceived = err => {
                     vpDevice.isBusy = false;
                     reject(err);
                 }
@@ -327,14 +320,14 @@
         isAvailable(): any {
             var wtimer; 
 
-            var promise = new Promise(function (resolve, reject) {
+            var promise = new Promise((resolve, reject) => {
                 if (!vpDevice.isBusy) {
                     resolve();
                 }
                 else {
                     var attempts = 0;
 
-                    wtimer = setInterval(function () {
+                    wtimer = setInterval(() => {
                         if (!vpDevice.isBusy) {
                             clearInterval(wtimer);
                             resolve();

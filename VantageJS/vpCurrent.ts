@@ -76,6 +76,7 @@ export default class vpCurrent extends vpBase {
     sunrise: string;
     sunset: string;
     dateLoaded: Date;
+    wuUpdated: Date;
 
 
     fBarometerTrend(): string {

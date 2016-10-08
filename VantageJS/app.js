@@ -1,11 +1,11 @@
 "use strict";
-var vantageWS_1 = require('./vantageWS');
+const vantageWS_1 = require('./vantageWS');
 var moment = require('moment');
 var http = require('http');
 var server = http.createServer(requestReceived);
 var io = require('socket.io')(server);
 var os = require('os');
-var config = require('./configuration.json');
+var config = require('./VantageJS.json');
 var comPort;
 var webPort;
 var dataReceived;
@@ -19,16 +19,16 @@ comPort = config[os.platform() + '_serialPort'];
 webPort = config.webPort;
 server.listen(webPort);
 webSocket();
-var ws = new vantageWS_1.default(comPort, config);
-ws.onCurrent = function (cur) {
+let ws = new vantageWS_1.default(comPort, config);
+ws.onCurrent = cur => {
     current = cur;
     io.sockets.emit('current', JSON.stringify(current));
 };
-ws.onHighLow = function (hl) {
+ws.onHighLow = hl => {
     hilows = hl;
     io.sockets.emit('hilows', JSON.stringify(hilows));
 };
-ws.onAlert = function (alerts) {
+ws.onAlert = alerts => {
     io.sockets.emit('alerts', JSON.stringify(alerts));
 };
 function requestReceived(req, res) {

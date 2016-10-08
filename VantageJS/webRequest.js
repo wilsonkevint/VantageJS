@@ -1,10 +1,7 @@
 "use strict";
-var Promise = require('promise');
 var http = require('http');
-var webRequest = (function () {
-    function webRequest() {
-    }
-    webRequest.get = function (host, path) {
+class webRequest {
+    static get(host, path) {
         if (!path) {
             path = host.substr(host.indexOf('/') - 1 + 1);
             host = host.substr(0, host.indexOf('/'));
@@ -47,9 +44,8 @@ var webRequest = (function () {
             }
         });
         return promise;
-    };
-    return webRequest;
-}());
+    }
+}
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.default = webRequest;
 //# sourceMappingURL=webRequest.js.map

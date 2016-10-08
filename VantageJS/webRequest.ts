@@ -1,5 +1,5 @@
 ﻿declare function require(name: string);
-var Promise = require('promise');
+
 var http = require('http');
 
 export default class webRequest {
@@ -18,32 +18,32 @@ export default class webRequest {
             method: 'get',
             timeout: 4000
         }
-
-        var promise = new Promise(function (resolve, reject) {
+                   
+        var promise = new Promise( function(resolve, reject) {
             var resultData = '';
 
             try {
-                var request = http.request(options, function (response) {
-                    response.on('data', function (chunk, len) {
+                var request = http.request(options, function(response) {
+                    response.on('data', function(chunk, len) {
 
                         resultData += String.fromCharCode.apply(null, chunk);
                         if (resultData.length == this.headers['content-length'])
                             resolve(resultData);
 
                     });
-                    response.on('timeout', function (socket) {
+                    response.on('timeout', function(socket) {
                         reject();
                     });
-                    response.on('error', function (err) {
+                    response.on('error', function(err) {
                         reject(err);
                     });
                 });
 
-                request.on('error', function (err) {
+                request.on('error', function(err) {
                     reject(err);
                 });
 
-                request.setTimeout(30000, function () {
+                request.setTimeout(30000, function() {
                     reject('timeout');
                 });
 

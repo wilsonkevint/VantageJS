@@ -1,127 +1,119 @@
 "use strict";
-var vpDevice_1 = require('./vpDevice');
-var vpCurrent_1 = require('./vpCurrent');
-var vpHiLow_1 = require('./vpHiLow');
-var vpBase_1 = require('./vpBase');
-var wunderGround_1 = require('./wunderGround');
+const vpDevice_1 = require('./vpDevice');
+const vpCurrent_1 = require('./vpCurrent');
+const vpHiLow_1 = require('./vpHiLow');
+const vpBase_1 = require('./vpBase');
+const wunderGround_1 = require('./wunderGround');
 var moment = require('moment');
 var http = require('http');
-var Promise = require('promise');
 var os = require('os');
 var linq = require('linq');
-var pauseSecs = 30;
-var vantageWS = (function () {
-    function vantageWS(comPort, config) {
+const pauseSecs = 30;
+class vantageWS {
+    constructor(comPort, config) {
         this.station = new vpDevice_1.default(comPort);
-        var self = this;
         var updateFreqMS = config.updateFrequency * 1000;
         this.config = config;
         this.wu = new wunderGround_1.default(config);
         this.getAlerts();
-        this.station.onOpen = function () {
+        this.station.onOpen = () => {
             var ctimer;
-            self.getHiLows();
-            ctimer = setInterval(function () {
-                if (!self.pauseLoop)
-                    self.getCurrent();
+            this.getHiLows();
+            ctimer = setInterval(() => {
+                if (!this.pauseLoop)
+                    this.getCurrent();
                 else {
-                    self.pauseLoop--;
+                    this.pauseLoop--;
                 }
-                if (self.pauseLoop != 0)
-                    console.log('pauseLoop: ' + self.pauseLoop);
+                if (this.pauseLoop != 0)
+                    console.log('pauseLoop: ' + this.pauseLoop);
             }, updateFreqMS);
         };
-        setInterval(function () {
-            self.getHiLows();
+        setInterval(() => {
+            this.getHiLows();
         }, 360000);
     }
-    vantageWS.prototype.getCurrent = function () {
-        var self = this;
-        self.station.isAvailable().then(function () {
-            self.station.wakeUp().then(function (result) {
-                self.station.getData("LOOP 1", 99, true).then(function (data) {
+    getCurrent() {
+        this.station.isAvailable().then(() => {
+            this.station.wakeUp().then(result => {
+                this.station.getData("LOOP 1", 99, true).then(data => {
                     if (vpDevice_1.default.validateCRC(data)) {
-                        self.current = new vpCurrent_1.default(data);
-                        self.wu.upload(self.current);
-                        if (self.onCurrent)
-                            self.onCurrent(self.current);
+                        this.current = new vpCurrent_1.default(data);
+                        this.wu.upload(this.current);
+                        if (this.onCurrent)
+                            this.onCurrent(this.current);
                     }
                 }, vantageWS.deviceError);
             }, vantageWS.deviceError);
-        }, function (err) {
+        }, err => {
             console.log('hilows device not available');
         });
-    };
-    vantageWS.prototype.queryArchives = function (key, group) {
+    }
+    queryArchives(key, group) {
         return {
             date: key, min: group.min(), max: group.max()
         };
-    };
-    vantageWS.prototype.getArchives = function () {
-        var self = this;
-        self.pauseLoop = 30 / self.config.updateFrequency;
-        self.station.getArchived("09/17/2016 00:00", function (archives) {
+    }
+    getArchives() {
+        this.pauseLoop = 30 / this.config.updateFrequency;
+        this.station.getArchived("09/17/2016 00:00", archives => {
             var hiTemp;
             var lowTemp;
-            hiTemp = linq.from(archives).groupBy('$.archiveDate', '$.outTemp', self.queryArchives)
+            hiTemp = linq.from(archives).groupBy('$.archiveDate', '$.outTemp', this.queryArchives)
                 .log("$.date + ' ' + $.min + ' ' + $.max").toJoinedString();
         });
-    };
-    vantageWS.prototype.getHiLows = function () {
-        var self = this;
-        self.pauseLoop = 25 / self.config.updateFrequency;
-        self.station.isAvailable().then(function () {
-            self.station.wakeUp().then(function (result) {
-                self.station.getData("HILOWS", 438, true).then(function (data) {
+    }
+    getHiLows() {
+        this.pauseLoop = 25 / this.config.updateFrequency;
+        this.station.isAvailable().then(() => {
+            this.station.wakeUp().then(result => {
+                this.station.getData("HILOWS", 438, true).then(data => {
                     if (vpDevice_1.default.validateCRC(data)) {
-                        self.hilows = new vpHiLow_1.default(data);
-                        self.hilows.dateLoaded = moment().format('YYYY-MM-DD hh:mm:ss');
-                        if (self.onHighLow)
-                            self.onHighLow(self.hilows);
-                        self.getForeCast();
-                        self.pauseLoop = 0;
-                        console.log('hi temp:' + self.hilows.outTemperature.dailyHi);
+                        this.hilows = new vpHiLow_1.default(data);
+                        this.hilows.dateLoaded = moment().format('YYYY-MM-DD hh:mm:ss');
+                        if (this.onHighLow)
+                            this.onHighLow(this.hilows);
+                        this.getForeCast();
+                        this.pauseLoop = 0;
+                        console.log('hi temp:' + this.hilows.outTemperature.dailyHi);
                     }
                 });
             });
-        }, function (err) {
+        }, err => {
             console.log('hilows device not available');
-            self.pauseLoop = 0;
+            this.pauseLoop = 0;
         });
-    };
-    vantageWS.deviceError = function (err) {
+    }
+    static deviceError(err) {
         console.log(err);
-    };
-    vantageWS.prototype.getForeCast = function () {
+    }
+    getForeCast() {
         var last;
-        var self = this;
         if (this.forecast) {
             last = vpBase_1.default.timeDiff(this.forecast.last, 'h');
         }
         if (!last || last >= 4) {
-            this.wu.getForeCast().then(function (forecast) {
-                self.forecast = forecast;
-                self.hilows.forecast = forecast;
+            this.wu.getForeCast().then(forecast => {
+                this.forecast = forecast;
+                this.hilows.forecast = forecast;
             });
         }
-    };
-    vantageWS.prototype.getAlerts = function () {
-        var self = this;
-        var doalerts = function () {
-            self.wu.getAlerts().then(function (alerts) {
-                self.alerts = alerts;
-                if (alerts.length && self.onAlert) {
-                    self.onAlert(alerts);
+    }
+    getAlerts() {
+        var doalerts = () => {
+            this.wu.getAlerts().then(alerts => {
+                this.alerts = alerts;
+                if (alerts.length && this.onAlert) {
+                    this.onAlert(alerts);
                 }
             });
         };
         doalerts();
-        setInterval(function () {
+        setInterval(() => {
             doalerts();
         }, 60000 * 15);
-    };
-    return vantageWS;
-}());
+    }
+}
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.default = vantageWS;
 //rl.on('line', (input) => {

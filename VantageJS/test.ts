@@ -1,12 +1,16 @@
-﻿declare function require(name: string);
+﻿import wunderGround from './wunderGround';
+declare function require(name: string);
 
-import weatherUG from './wunderGround';
-import weatherAlert from './weatherAlert';
+var config = require('./VantageJS.json');
+this.config = config;
+this.wu = new wunderGround(config);
 
-var config = require('./configuration.json');
+var self = this;
+var promise = new Promise(function (resolve, reject) {
+    self.wu.getForeCast().then(function (forecast) {
 
-var wunderG = new weatherUG(config); 
-
-wunderG.getAlerts().then(alert => {
-    console.dir(alert);
-});
+        resolve(forecast);
+    });
+}).then(forecast => {
+    console.log(forecast);
+    });            

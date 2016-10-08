@@ -1,14 +1,8 @@
 "use strict";
-var __extends = (this && this.__extends) || function (d, b) {
-    for (var p in b) if (b.hasOwnProperty(p)) d[p] = b[p];
-    function __() { this.constructor = d; }
-    d.prototype = b === null ? Object.create(b) : (__.prototype = b.prototype, new __());
-};
-var vpBase_1 = require('./vpBase');
-var vpHiLow = (function (_super) {
-    __extends(vpHiLow, _super);
-    function vpHiLow(data) {
-        _super.call(this, data);
+const vpBase_1 = require('./vpBase');
+class vpHiLow extends vpBase_1.default {
+    constructor(data) {
+        super(data);
         this.dataIndx = 0;
         this.barometer = this.fBarometerHL();
         this.windSpeed = this.fWindSpeed();
@@ -26,7 +20,7 @@ var vpHiLow = (function (_super) {
         this.outHumidity = this.fHumidity(true);
         this._data = null;
     }
-    vpHiLow.prototype.fBarometerHL = function () {
+    fBarometerHL() {
         var hilow = new hiLow();
         hilow.dailyLow = vpBase_1.default.round(this.nextDecimal() / 1000, 2);
         hilow.dailyHi = vpBase_1.default.round(this.nextDecimal() / 1000, 2);
@@ -37,16 +31,16 @@ var vpHiLow = (function (_super) {
         hilow.dailyLowTime = this.nextTime();
         hilow.dailyHighTime = this.nextTime();
         return hilow;
-    };
-    vpHiLow.prototype.fWindSpeed = function () {
+    }
+    fWindSpeed() {
         var hilow = new hiLow();
         hilow.dailyHi = this.nextByte();
         hilow.dailyHighTime = this.nextTime();
         hilow.monthHi = this.nextByte();
         hilow.yearHi = this.nextByte();
         return hilow;
-    };
-    vpHiLow.prototype.fTemperatureHL = function (outside) {
+    }
+    fTemperatureHL(outside) {
         var hilow = new hiLow();
         //the sequence of low high is reversed inside vs outside (blame Davis)
         var dailyHi = this.fTemperature();
@@ -66,8 +60,8 @@ var vpHiLow = (function (_super) {
         hilow.yearHi = (outside ? yearLow : yearHi);
         hilow.yearLow = (outside ? yearHi : yearLow);
         return hilow;
-    };
-    vpHiLow.prototype.fHumidity = function (outside) {
+    }
+    fHumidity(outside) {
         var hilow = new hiLow();
         if (!outside) {
             hilow.dailyHi = this.nextByte();
@@ -98,8 +92,8 @@ var vpHiLow = (function (_super) {
             this.dataIndx += 7;
         }
         return hilow;
-    };
-    vpHiLow.prototype.fDewPoint = function () {
+    }
+    fDewPoint() {
         var hilow = new hiLow();
         hilow.dailyLow = this.nextDecimal();
         hilow.dailyHi = this.nextDecimal();
@@ -110,24 +104,24 @@ var vpHiLow = (function (_super) {
         hilow.yearHi = this.nextDecimal();
         hilow.yearLow = this.nextDecimal();
         return hilow;
-    };
-    vpHiLow.prototype.fWindChill = function () {
+    }
+    fWindChill() {
         var low = new hiLow();
         low.dailyLow = this.nextDecimal();
         low.dailyLowTime = this.nextTime();
         low.monthLow = this.nextDecimal();
         low.yearLow = this.nextDecimal();
         return low;
-    };
-    vpHiLow.prototype.fHeatIndex = function () {
+    }
+    fHeatIndex() {
         var hi = new hiLow();
         hi.dailyHi = this.nextDecimal();
         hi.dailyHighTime = this.nextTime();
         hi.monthHi = this.nextDecimal();
         hi.yearHi = this.nextDecimal();
         return hi;
-    };
-    vpHiLow.prototype.fRainHL = function () {
+    }
+    fRainHL() {
         var hi = new hiLow();
         hi.dailyHi = this.nextDecimal() / 100;
         hi.dailyHighTime = this.nextTime();
@@ -135,22 +129,18 @@ var vpHiLow = (function (_super) {
         hi.monthHi = this.nextDecimal() / 100;
         hi.yearHi = this.nextDecimal() / 100;
         return hi;
-    };
-    vpHiLow.prototype.fUVHigh = function () {
+    }
+    fUVHigh() {
         var hi = new hiLow();
         hi.dailyHi = this.nextByte();
         hi.dailyHighTime = this.nextTime();
         hi.monthHi = this.nextByte();
         hi.yearHi = this.nextByte();
         return hi;
-    };
-    return vpHiLow;
-}(vpBase_1.default));
+    }
+}
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.default = vpHiLow;
-var hiLow = (function () {
-    function hiLow() {
-    }
-    return hiLow;
-}());
+class hiLow {
+}
 //# sourceMappingURL=vpHiLow.js.map

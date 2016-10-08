@@ -25,7 +25,7 @@ export default class wunderGround {
 
         var url = eval('`' + config.wuAlertUrl + '`');
 
-        return webRequest.get(url, null).then(function (data) {
+        return webRequest.get(url, null).then(data => {
             var response = JSON.parse(data);
 
             var wuAlerts = new Array<weatherAlert>();
@@ -70,21 +70,22 @@ export default class wunderGround {
         };
 
         try {
-            var request = http.request(options, function (response) {
-                response.on('data', function (chunk) {
+            var request = http.request(options, response => {
+                response.on('data', chunk => {
                     //console.log('update WU: ' + String.fromCharCode.apply(null, chunk) + moment().format('HH:mm:ss') + ' temp:' + current.outTemperature);
+                    current.wuUpdated = new Date();
                 });
-                response.on('timeout', function (socket) {
+                response.on('timeout', socket => {
                     console.log('resp timeout');
                 });
-                response.on('error', function (err) {
+                response.on('error', err => {
                     console.log('resp error' + err);
                 });
             });
-            request.on('error', function (err) {
+            request.on('error', err => {
                 console.log('request error ' + err);
             });
-            request.setTimeout(30000, function () {
+            request.setTimeout(30000, () => {
                 console.log('request timeout');
             });
             request.end();
@@ -106,16 +107,16 @@ export default class wunderGround {
         var cityState = config.wuCityState.split(','); 
         var city = cityState[0];
         var state = cityState[1]; 
-        var url = eval('`' + config.forecastUrl + '`'); 
+        var url = eval('`' + config.forecastUrl + '`');      
 
-        return webRequest.get(url, null).then(function (data) {
+        return webRequest.get(url, null).then(function(data) {
             var wforecast = JSON.parse(data).forecast;
             var forecast = { last: new Date(), periods: [] };
 
-            wforecast.txt_forecast.forecastday.forEach(function (period) {
+            wforecast.txt_forecast.forecastday.forEach( period => {
                 forecast.periods.push(period);
             });
-
+        
             return forecast;
             
 
