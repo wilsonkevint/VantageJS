@@ -190,7 +190,7 @@
 
                         received = [];
 
-                        console.log('retrieved page ' + pgIndex); 
+                        console.log('retrieved page ' + pgIndex + ' of ' + pgCount); 
 
                         if (pgIndex == pgCount) {
                             callback(archives);

@@ -43,6 +43,11 @@ ws.onHighLow = hl => {
 ws.onAlert = alerts => {
     io.sockets.emit('alerts', JSON.stringify(alerts));
 }
+
+ws.onHistory = history => {
+    io.sockets.emit('history', JSON.stringify(history));
+}
+
  
 
 function requestReceived(req, res) {       
@@ -87,6 +92,32 @@ function requestReceived(req, res) {
             res.end("no data");
         }
     }
+    else if (req.url.indexOf('alexa') > -1) {
+        res.writeHead(200, { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': allowOrigins });
+        try {
+            var obj = {
+                humidity: ws.current.outHumidity.toFixed(0),
+                dewpoint: ws.current.dewpoint.toFixed(0),
+                barometer: ws.current.barometer + ' ' + ws.current.barometerTrend,
+                wind: ws.current.windAvg + ' from ' + ws.current.windDirection,
+                forecast: ws.forecast.periods[0].fcttext,
+                sunrise: ws.current.sunrise,
+                sunset: ws.current.sunset,
+                alerts: ws.alerts.length ? ws.alerts[0].message : 'none'
+            }
+            obj["inside temperature"] = ws.current.inTemperature.toFixed(0);
+            obj["temperature"] = ws.current.outTemperature.toFixed(0);
+            obj["rain rate"] = ws.current.rainRate.toFixed(0);
+            obj["rain today"] = ws.current.dayRain.toFixed(0);
+            obj["storm rain"] = ws.current.stormRain.toFixed(0);
+            obj["month rain"] = ws.current.monthRain.toFixed(0);
+        }
+        catch (ex) {
+        }
+                 
+
+        res.end(JSON.stringify(obj));
+    }
     else {
         if (ws.current) {
             res.writeHead(200, { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': allowOrigins });
@@ -97,12 +128,13 @@ function requestReceived(req, res) {
             res.end("no data");
         }
     }
+    
 }
 
 //socket.io connection
 function webSocket() {
     io.on('connection', function (socket) {
-        console.log('socket connection');
+        console.log('socket connection vp');
 
         if (ws.current)
             socket.emit('current', JSON.stringify(ws.current));
@@ -113,10 +145,18 @@ function webSocket() {
         if (ws.alerts)
             socket.emit('alerts', JSON.stringify(ws.alerts));
 
-        socket.on('hilows', function (data) {
+        socket.on('hilows', (data) => {
+            console.log('hilows req');
             ws.getHiLows();
+        });   
+
+        socket.on('history', (data) => {
+            console.log('history request');
+            ws.getArchives();
         });
     });
+
+
 
 }
 

@@ -5,9 +5,9 @@ var config = require('./VantageJS.json');
 this.config = config;
 this.wu = new wunderGround(config);
 
-var self = this;
-var promise = new Promise(function (resolve, reject) {
-    self.wu.getForeCast().then(function (forecast) {
+ 
+var promise = new Promise( (resolve, reject) => {
+    this.wu.getForeCast().then( forecast => {
 
         resolve(forecast);
     });

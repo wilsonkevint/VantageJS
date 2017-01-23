@@ -71,26 +71,20 @@ function requestReceived(req, res) {
     }
     else if (req.url.indexOf('alexa') > -1) {
         res.writeHead(200, { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': allowOrigins });
-        try {
-            var obj = {
-                humidity: ws.current.outHumidity.toFixed(0),
-                dewpoint: ws.current.dewpoint.toFixed(0),
-                barometer: ws.current.barometer + ' ' + ws.current.barometerTrend,
-                wind: ws.current.windAvg + ' from ' + ws.current.windDirection,
-                forecast: ws.forecast.periods[0].fcttext,
-                sunrise: ws.current.sunrise,
-                sunset: ws.current.sunset,
-                alerts: ws.alerts.length ? ws.alerts[0].message : 'none'
-            };
-            obj["inside temperature"] = ws.current.inTemperature.toFixed(0);
-            obj["temperature"] = ws.current.outTemperature.toFixed(0);
-            obj["rain rate"] = ws.current.rainRate.toFixed(0);
-            obj["rain today"] = ws.current.dayRain.toFixed(0);
-            obj["storm rain"] = ws.current.stormRain.toFixed(0);
-            obj["month rain"] = ws.current.monthRain.toFixed(0);
-        }
-        catch (ex) {
-        }
+        var obj = {
+            "inside temperature": ws.current.inTemperature.toFixed(0),
+            "temperature": ws.current.outTemperature.toFixed(0),
+            Humidity: ws.current.outHumidity.toFixed(0),
+            Dewpoint: ws.current.dewpoint.toFixed(0),
+            Barometer: ws.current.barometer + ' ' + ws.current.barometerTrend,
+            RainRate: ws.current.rainRate,
+            RainToday: ws.current.dayRain,
+            StormRain: ws.current.stormRain,
+            WindDirection: ws.current.windDirection,
+            Forecast: ws.forecast.periods[0].fcttext,
+            Sunrise: ws.current.sunrise,
+            Sunset: ws.current.sunset
+        };
         res.end(JSON.stringify(obj));
     }
     else {

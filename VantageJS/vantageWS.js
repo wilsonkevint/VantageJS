@@ -56,11 +56,15 @@ class vantageWS {
     }
     getArchives() {
         this.pauseLoop = 30 / this.config.updateFrequency;
-        this.station.getArchived("09/17/2016 00:00", archives => {
+        var startDate = (moment().add('months', -1).format("MM/DD/YYYY 00:00"));
+        this.station.getArchived(startDate, archives => {
             var hiTemp;
             var lowTemp;
+            console.log(archives);
             hiTemp = linq.from(archives).groupBy('$.archiveDate', '$.outTemp', this.queryArchives)
                 .log("$.date + ' ' + $.min + ' ' + $.max").toJoinedString();
+            if (this.onHistory)
+                this.onHistory(archives);
         });
     }
     getHiLows() {
