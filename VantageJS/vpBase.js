@@ -1,16 +1,16 @@
 "use strict";
 var moment = require('moment');
-class vpBase {
-    constructor(data) {
+var vpBase = (function () {
+    function vpBase(data) {
         this._data = data;
         this.dataIndx = 0;
     }
-    nextByte() {
+    vpBase.prototype.nextByte = function () {
         var val = this._data[this.dataIndx];
         this.dataIndx += 1;
         return val;
-    }
-    nextDateTime() {
+    };
+    vpBase.prototype.nextDateTime = function () {
         var dt;
         var ardate = this.nextDecimal();
         var artime = this.nextDecimal();
@@ -29,13 +29,13 @@ class vpBase {
             return null;
         }
         return dt;
-    }
-    nextDecimal() {
+    };
+    vpBase.prototype.nextDecimal = function () {
         var byte1 = this.nextByte();
         var byte2 = this.nextByte();
         return byte2 * 256 + byte1;
-    }
-    nextTime() {
+    };
+    vpBase.prototype.nextTime = function () {
         var time = this.nextDecimal();
         var tm;
         if (time != 65535) {
@@ -45,19 +45,19 @@ class vpBase {
         else
             return "";
         return moment().hours(hrs).minutes(mins).format('h:mm a');
-    }
-    peek(offset) {
+    };
+    vpBase.prototype.peek = function (offset) {
         return this._data[this.dataIndx + offset];
-    }
-    static round(value, precision) {
+    };
+    vpBase.round = function (value, precision) {
         var multiplier = Math.pow(10, precision || 0);
         return Math.round(value * multiplier) / multiplier;
-    }
-    fBarometer() {
+    };
+    vpBase.prototype.fBarometer = function () {
         var barom = this.nextDecimal() / 1000;
         return vpBase.round(barom, 2);
-    }
-    fTemperature() {
+    };
+    vpBase.prototype.fTemperature = function () {
         var temp1 = this.peek(0);
         var temp2 = this.peek(1);
         var temp = this.nextDecimal();
@@ -69,14 +69,14 @@ class vpBase {
         catch (x) {
         }
         return temp;
-    }
-    fRain() {
+    };
+    vpBase.prototype.fRain = function () {
         var rain = this.nextDecimal();
         if (rain == 65535)
             rain = 0;
         return vpBase.round(rain, 2) / 100;
-    }
-    static date(dt) {
+    };
+    vpBase.date = function (dt) {
         if (dt == 65535 || dt == 0)
             return null;
         var yrs = (dt & 0x7f) + 2000;
@@ -85,12 +85,12 @@ class vpBase {
         var mdt = yrs.toString() + ' ' + vpBase.pad(month, 2) + ' ' + vpBase.pad(days, 2);
         mdt = moment(mdt, 'YYYY MM DD').format('MM/DD/YYYY');
         return mdt;
-    }
-    static pad(num, size) {
+    };
+    vpBase.pad = function (num, size) {
         var s = "000000000" + num;
         return s.substr(s.length - size);
-    }
-    static timeDiff(dt, type) {
+    };
+    vpBase.timeDiff = function (dt, type) {
         var diff = new Date().getMilliseconds() - dt.getMilliseconds();
         diff = Math.abs(diff);
         var seconds = Math.floor(diff / 1000);
@@ -108,8 +108,8 @@ class vpBase {
                 break;
         }
         return diff;
-    }
-    static getDateTimeStamp(dt) {
+    };
+    vpBase.getDateTimeStamp = function (dt) {
         var dtStamp;
         var tmStamp;
         var mdt = moment(dt, 'MM/DD/YYYY');
@@ -122,11 +122,12 @@ class vpBase {
         data[2] = (tmStamp % 256);
         data[3] = Math.round(tmStamp / 256);
         return data;
-    }
-    static uint16(n) {
+    };
+    vpBase.uint16 = function (n) {
         return n & 0xFFFF;
-    }
-}
+    };
+    return vpBase;
+}());
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.default = vpBase;
 //# sourceMappingURL=vpBase.js.map

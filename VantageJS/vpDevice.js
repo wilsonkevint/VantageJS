@@ -1,10 +1,12 @@
 "use strict";
-const vpBase_1 = require('./vpBase');
-const vpArchive_1 = require('./vpArchive');
+var vpBase_1 = require('./vpBase');
+var vpArchive_1 = require('./vpArchive');
 var moment = require('moment');
 var SerialPort = require("serialport");
-class vpDevice {
-    constructor(comPort) {
+var Promise = require('promise');
+var vpDevice = (function () {
+    function vpDevice(comPort) {
+        var _this = this;
         this.portName = comPort;
         this.port = new SerialPort(comPort, {
             baudRate: 19200,
@@ -13,42 +15,43 @@ class vpDevice {
             parity: 'none',
             parser: SerialPort.parsers.raw
         });
-        this.port.on('open', data => {
-            if (this.onOpen)
-                this.onOpen();
+        this.port.on('open', function (data) {
+            if (_this.onOpen)
+                _this.onOpen();
             console.log('comport open');
         });
-        this.port.on('close', () => {
+        this.port.on('close', function () {
             console.log('comport closed');
         });
-        this.port.on('error', err => {
-            this.errorReceived(err);
+        this.port.on('error', function (err) {
+            _this.errorReceived(err);
             console.log('comport ' + err);
         });
-        this.port.on('data', (data) => {
-            this.dataReceived(data);
+        this.port.on('data', function (data) {
+            _this.dataReceived(data);
         });
     }
-    dataReceived(data) {
-    }
-    errorReceived(err) {
+    vpDevice.prototype.dataReceived = function (data) {
+    };
+    vpDevice.prototype.errorReceived = function (err) {
         vpDevice.isBusy = false;
-    }
-    readLoop(loops, callback) {
-        this.dataReceived = data => {
+    };
+    vpDevice.prototype.readLoop = function (loops, callback) {
+        this.dataReceived = function (data) {
             callback(data);
         };
         this.port.write('LOOP ' + loops.toString() + '\n');
-    }
-    getData(cmd, reqchars, expectAck) {
-        var promise = new Promise((resolve, reject) => {
+    };
+    vpDevice.prototype.getData = function (cmd, reqchars, expectAck) {
+        var _this = this;
+        var promise = new Promise(function (resolve, reject) {
             var received = [];
             vpDevice.isBusy = true;
             if (typeof cmd == 'string')
-                this.port.write(cmd + '\n');
+                _this.port.write(cmd + '\n');
             else
-                this.port.write(cmd);
-            this.dataReceived = (data) => {
+                _this.port.write(cmd);
+            _this.dataReceived = function (data) {
                 if (expectAck) {
                     if (data[0] == 6) {
                         expectAck = false;
@@ -73,24 +76,26 @@ class vpDevice {
                     resolve(received);
                 }
             };
-            this.errorReceived = err => {
+            _this.errorReceived = function (err) {
                 vpDevice.isBusy = false;
                 reject(err);
             };
         });
         return promise;
-    }
-    getArchived(startDate, callback) {
+    };
+    vpDevice.prototype.getArchived = function (startDate, callback) {
+        var _this = this;
         var archives;
-        this.isAvailable().then(() => {
-            this.wakeUp().then(result => {
-                this.getData("DMPAFT", 1, true).then(data => {
-                    this.sendArchiveTS(startDate, callback);
+        this.isAvailable().then(function () {
+            _this.wakeUp().then(function (result) {
+                _this.getData("DMPAFT", 1, true).then(function (data) {
+                    _this.sendArchiveTS(startDate, callback);
                 });
             });
         });
-    }
-    sendArchiveTS(startDate, callback) {
+    };
+    vpDevice.prototype.sendArchiveTS = function (startDate, callback) {
+        var _this = this;
         var start = moment(startDate, 'MM/DD/YYYY hh:mm');
         var stamp = vpBase_1.default.getDateTimeStamp(start);
         var crcTS = vpDevice.getCRC(stamp);
@@ -99,13 +104,13 @@ class vpDevice {
         var attempts = 0;
         Array.prototype.push.apply(buffer, stamp);
         Array.prototype.push.apply(buffer, crcTS);
-        this.getData(buffer, 6, true).then(data => {
-            this.retrieveArchive(data, callback);
-        }, err => {
+        this.getData(buffer, 6, true).then(function (data) {
+            _this.retrieveArchive(data, callback);
+        }, function (err) {
             if (attempts < 4) {
                 attempts++;
-                setTimeout(() => {
-                    this.sendArchiveTS(buffer, callback);
+                setTimeout(function () {
+                    _this.sendArchiveTS(buffer, callback);
                 }, 500);
             }
             else {
@@ -113,8 +118,9 @@ class vpDevice {
                 console.log('sendArchiveTS attempted 3 times');
             }
         });
-    }
-    retrieveArchive(buffer, callback) {
+    };
+    vpDevice.prototype.retrieveArchive = function (buffer, callback) {
+        var _this = this;
         var base = new vpBase_1.default(new Uint8Array(buffer));
         var pgCount = base.nextDecimal();
         var firstRecord = base.nextDecimal();
@@ -122,7 +128,7 @@ class vpDevice {
         var archives = [];
         var received = [];
         console.log('retrieving ' + pgCount + ' pages');
-        this.dataReceived = data => {
+        this.dataReceived = function (data) {
             if (received.length < 267)
                 received.push.apply(received, data);
             if (received.length == 267) {
@@ -144,17 +150,17 @@ class vpDevice {
                         callback(archives);
                     }
                     else {
-                        this.port.write([6]);
+                        _this.port.write([6]);
                     }
                 }
                 else {
-                    this.port.write(0x21); //crc error.. request send again
+                    _this.port.write(0x21); //crc error.. request send again
                 }
             }
         };
         this.port.write([6]); //acknowledge- start download
-    }
-    static validateCRC(data) {
+    };
+    vpDevice.validateCRC = function (data) {
         var crcNum = 0;
         for (var i = 0; i < data.length; i++) {
             var d = data[i];
@@ -162,8 +168,8 @@ class vpDevice {
             crcNum = vpBase_1.default.uint16((crcNum << 8) ^ vpDevice.crc_table[indx]);
         }
         return crcNum == 0;
-    }
-    static getCRC(data) {
+    };
+    vpDevice.getCRC = function (data) {
         var crcNum = 0;
         for (var i = 0; i < data.length; i++) {
             var d = data[i];
@@ -173,13 +179,14 @@ class vpDevice {
         var byte2 = vpBase_1.default.uint16(crcNum / 256);
         var byte1 = vpBase_1.default.uint16(crcNum - byte2 * 256);
         return [byte2, byte1];
-    }
-    wakeUp() {
+    };
+    vpDevice.prototype.wakeUp = function () {
+        var _this = this;
         var attempts = 0;
-        var promise = new Promise((resolve, reject) => {
+        var promise = new Promise(function (resolve, reject) {
             vpDevice.isBusy = true;
-            this.port.write('\n');
-            this.dataReceived = (data) => {
+            _this.port.write('\n');
+            _this.dataReceived = function (data) {
                 if (data.length == 2 && data[0] == 10 && data[1] == 13) {
                     vpDevice.isBusy = false;
                     resolve(true);
@@ -190,28 +197,28 @@ class vpDevice {
                         reject(false);
                     }
                     else
-                        setTimeout(() => {
-                            this.port.write('\n');
+                        setTimeout(function () {
+                            _this.port.write('\n');
                         }, 1000);
                     attempts++;
                 }
             };
-            this.errorReceived = err => {
+            _this.errorReceived = function (err) {
                 vpDevice.isBusy = false;
                 reject(err);
             };
         });
         return promise;
-    }
-    isAvailable() {
+    };
+    vpDevice.prototype.isAvailable = function () {
         var wtimer;
-        var promise = new Promise((resolve, reject) => {
+        var promise = new Promise(function (resolve, reject) {
             if (!vpDevice.isBusy) {
                 resolve();
             }
             else {
                 var attempts = 0;
-                wtimer = setInterval(() => {
+                wtimer = setInterval(function () {
                     if (!vpDevice.isBusy) {
                         clearInterval(wtimer);
                         resolve();
@@ -226,42 +233,43 @@ class vpDevice {
             }
         });
         return promise;
-    }
-}
-vpDevice.crc_table = [
-    0x0, 0x1021, 0x2042, 0x3063, 0x4084, 0x50a5, 0x60c6, 0x70e7,
-    0x8108, 0x9129, 0xa14a, 0xb16b, 0xc18c, 0xd1ad, 0xe1ce, 0xf1ef,
-    0x1231, 0x210, 0x3273, 0x2252, 0x52b5, 0x4294, 0x72f7, 0x62d6,
-    0x9339, 0x8318, 0xb37b, 0xa35a, 0xd3bd, 0xc39c, 0xf3ff, 0xe3de,
-    0x2462, 0x3443, 0x420, 0x1401, 0x64e6, 0x74c7, 0x44a4, 0x5485,
-    0xa56a, 0xb54b, 0x8528, 0x9509, 0xe5ee, 0xf5cf, 0xc5ac, 0xd58d,
-    0x3653, 0x2672, 0x1611, 0x630, 0x76d7, 0x66f6, 0x5695, 0x46b4,
-    0xb75b, 0xa77a, 0x9719, 0x8738, 0xf7df, 0xe7fe, 0xd79d, 0xc7bc,
-    0x48c4, 0x58e5, 0x6886, 0x78a7, 0x840, 0x1861, 0x2802, 0x3823,
-    0xc9cc, 0xd9ed, 0xe98e, 0xf9af, 0x8948, 0x9969, 0xa90a, 0xb92b,
-    0x5af5, 0x4ad4, 0x7ab7, 0x6a96, 0x1a71, 0xa50, 0x3a33, 0x2a12,
-    0xdbfd, 0xcbdc, 0xfbbf, 0xeb9e, 0x9b79, 0x8b58, 0xbb3b, 0xab1a,
-    0x6ca6, 0x7c87, 0x4ce4, 0x5cc5, 0x2c22, 0x3c03, 0xc60, 0x1c41,
-    0xedae, 0xfd8f, 0xcdec, 0xddcd, 0xad2a, 0xbd0b, 0x8d68, 0x9d49,
-    0x7e97, 0x6eb6, 0x5ed5, 0x4ef4, 0x3e13, 0x2e32, 0x1e51, 0xe70,
-    0xff9f, 0xefbe, 0xdfdd, 0xcffc, 0xbf1b, 0xaf3a, 0x9f59, 0x8f78,
-    0x9188, 0x81a9, 0xb1ca, 0xa1eb, 0xd10c, 0xc12d, 0xf14e, 0xe16f,
-    0x1080, 0xa1, 0x30c2, 0x20e3, 0x5004, 0x4025, 0x7046, 0x6067,
-    0x83b9, 0x9398, 0xa3fb, 0xb3da, 0xc33d, 0xd31c, 0xe37f, 0xf35e,
-    0x2b1, 0x1290, 0x22f3, 0x32d2, 0x4235, 0x5214, 0x6277, 0x7256,
-    0xb5ea, 0xa5cb, 0x95a8, 0x8589, 0xf56e, 0xe54f, 0xd52c, 0xc50d,
-    0x34e2, 0x24c3, 0x14a0, 0x481, 0x7466, 0x6447, 0x5424, 0x4405,
-    0xa7db, 0xb7fa, 0x8799, 0x97b8, 0xe75f, 0xf77e, 0xc71d, 0xd73c,
-    0x26d3, 0x36f2, 0x691, 0x16b0, 0x6657, 0x7676, 0x4615, 0x5634,
-    0xd94c, 0xc96d, 0xf90e, 0xe92f, 0x99c8, 0x89e9, 0xb98a, 0xa9ab,
-    0x5844, 0x4865, 0x7806, 0x6827, 0x18c0, 0x8e1, 0x3882, 0x28a3,
-    0xcb7d, 0xdb5c, 0xeb3f, 0xfb1e, 0x8bf9, 0x9bd8, 0xabbb, 0xbb9a,
-    0x4a75, 0x5a54, 0x6a37, 0x7a16, 0xaf1, 0x1ad0, 0x2ab3, 0x3a92,
-    0xfd2e, 0xed0f, 0xdd6c, 0xcd4d, 0xbdaa, 0xad8b, 0x9de8, 0x8dc9,
-    0x7c26, 0x6c07, 0x5c64, 0x4c45, 0x3ca2, 0x2c83, 0x1ce0, 0xcc1,
-    0xef1f, 0xff3e, 0xcf5d, 0xdf7c, 0xaf9b, 0xbfba, 0x8fd9, 0x9ff8,
-    0x6e17, 0x7e36, 0x4e55, 0x5e74, 0x2e93, 0x3eb2, 0xed1, 0x1ef0
-];
+    };
+    vpDevice.crc_table = [
+        0x0, 0x1021, 0x2042, 0x3063, 0x4084, 0x50a5, 0x60c6, 0x70e7,
+        0x8108, 0x9129, 0xa14a, 0xb16b, 0xc18c, 0xd1ad, 0xe1ce, 0xf1ef,
+        0x1231, 0x210, 0x3273, 0x2252, 0x52b5, 0x4294, 0x72f7, 0x62d6,
+        0x9339, 0x8318, 0xb37b, 0xa35a, 0xd3bd, 0xc39c, 0xf3ff, 0xe3de,
+        0x2462, 0x3443, 0x420, 0x1401, 0x64e6, 0x74c7, 0x44a4, 0x5485,
+        0xa56a, 0xb54b, 0x8528, 0x9509, 0xe5ee, 0xf5cf, 0xc5ac, 0xd58d,
+        0x3653, 0x2672, 0x1611, 0x630, 0x76d7, 0x66f6, 0x5695, 0x46b4,
+        0xb75b, 0xa77a, 0x9719, 0x8738, 0xf7df, 0xe7fe, 0xd79d, 0xc7bc,
+        0x48c4, 0x58e5, 0x6886, 0x78a7, 0x840, 0x1861, 0x2802, 0x3823,
+        0xc9cc, 0xd9ed, 0xe98e, 0xf9af, 0x8948, 0x9969, 0xa90a, 0xb92b,
+        0x5af5, 0x4ad4, 0x7ab7, 0x6a96, 0x1a71, 0xa50, 0x3a33, 0x2a12,
+        0xdbfd, 0xcbdc, 0xfbbf, 0xeb9e, 0x9b79, 0x8b58, 0xbb3b, 0xab1a,
+        0x6ca6, 0x7c87, 0x4ce4, 0x5cc5, 0x2c22, 0x3c03, 0xc60, 0x1c41,
+        0xedae, 0xfd8f, 0xcdec, 0xddcd, 0xad2a, 0xbd0b, 0x8d68, 0x9d49,
+        0x7e97, 0x6eb6, 0x5ed5, 0x4ef4, 0x3e13, 0x2e32, 0x1e51, 0xe70,
+        0xff9f, 0xefbe, 0xdfdd, 0xcffc, 0xbf1b, 0xaf3a, 0x9f59, 0x8f78,
+        0x9188, 0x81a9, 0xb1ca, 0xa1eb, 0xd10c, 0xc12d, 0xf14e, 0xe16f,
+        0x1080, 0xa1, 0x30c2, 0x20e3, 0x5004, 0x4025, 0x7046, 0x6067,
+        0x83b9, 0x9398, 0xa3fb, 0xb3da, 0xc33d, 0xd31c, 0xe37f, 0xf35e,
+        0x2b1, 0x1290, 0x22f3, 0x32d2, 0x4235, 0x5214, 0x6277, 0x7256,
+        0xb5ea, 0xa5cb, 0x95a8, 0x8589, 0xf56e, 0xe54f, 0xd52c, 0xc50d,
+        0x34e2, 0x24c3, 0x14a0, 0x481, 0x7466, 0x6447, 0x5424, 0x4405,
+        0xa7db, 0xb7fa, 0x8799, 0x97b8, 0xe75f, 0xf77e, 0xc71d, 0xd73c,
+        0x26d3, 0x36f2, 0x691, 0x16b0, 0x6657, 0x7676, 0x4615, 0x5634,
+        0xd94c, 0xc96d, 0xf90e, 0xe92f, 0x99c8, 0x89e9, 0xb98a, 0xa9ab,
+        0x5844, 0x4865, 0x7806, 0x6827, 0x18c0, 0x8e1, 0x3882, 0x28a3,
+        0xcb7d, 0xdb5c, 0xeb3f, 0xfb1e, 0x8bf9, 0x9bd8, 0xabbb, 0xbb9a,
+        0x4a75, 0x5a54, 0x6a37, 0x7a16, 0xaf1, 0x1ad0, 0x2ab3, 0x3a92,
+        0xfd2e, 0xed0f, 0xdd6c, 0xcd4d, 0xbdaa, 0xad8b, 0x9de8, 0x8dc9,
+        0x7c26, 0x6c07, 0x5c64, 0x4c45, 0x3ca2, 0x2c83, 0x1ce0, 0xcc1,
+        0xef1f, 0xff3e, 0xcf5d, 0xdf7c, 0xaf9b, 0xbfba, 0x8fd9, 0x9ff8,
+        0x6e17, 0x7e36, 0x4e55, 0x5e74, 0x2e93, 0x3eb2, 0xed1, 0x1ef0
+    ];
+    return vpDevice;
+}());
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.default = vpDevice;
 //# sourceMappingURL=vpDevice.js.map

@@ -1,13 +1,13 @@
 "use strict";
-const webRequest_1 = require('./webRequest');
-const weatherAlert_1 = require('./weatherAlert');
+var webRequest_1 = require('./webRequest');
+var weatherAlert_1 = require('./weatherAlert');
 var moment = require('moment');
 var http = require('http');
-class wunderGround {
-    constructor(config) {
+var wunderGround = (function () {
+    function wunderGround(config) {
         this.config = config;
     }
-    getAlerts() {
+    wunderGround.prototype.getAlerts = function () {
         var config = this.config;
         var cityState = config.wuCityState.split(',');
         if (cityState.length != 2)
@@ -16,10 +16,10 @@ class wunderGround {
         var state = cityState[1];
         var token = config.wuToken;
         var url = eval('`' + config.wuAlertUrl + '`');
-        return webRequest_1.default.get(url, null).then(data => {
+        return webRequest_1.default.get(url, null).then(function (data) {
             var response = JSON.parse(data);
             var wuAlerts = new Array();
-            response.alerts.forEach(alert => {
+            response.alerts.forEach(function (alert) {
                 var wuAlert = new weatherAlert_1.default();
                 wuAlert.description = alert.description;
                 wuAlert.expires = alert.expires;
@@ -32,8 +32,8 @@ class wunderGround {
             });
             return wuAlerts;
         });
-    }
-    upload(current) {
+    };
+    wunderGround.prototype.upload = function (current) {
         var config = this.config;
         var wuUserID = config.wuUserID;
         var wuPassword = config.wuPassword;
@@ -52,22 +52,22 @@ class wunderGround {
             timeout: 4000
         };
         try {
-            var request = http.request(options, response => {
-                response.on('data', chunk => {
+            var request = http.request(options, function (response) {
+                response.on('data', function (chunk) {
                     //console.log('update WU: ' + String.fromCharCode.apply(null, chunk) + moment().format('HH:mm:ss') + ' temp:' + current.outTemperature);
                     current.wuUpdated = new Date();
                 });
-                response.on('timeout', socket => {
+                response.on('timeout', function (socket) {
                     console.log('resp timeout');
                 });
-                response.on('error', err => {
+                response.on('error', function (err) {
                     console.log('resp error' + err);
                 });
             });
-            request.on('error', err => {
+            request.on('error', function (err) {
                 console.log('request error ' + err);
             });
-            request.setTimeout(30000, () => {
+            request.setTimeout(30000, function () {
                 console.log('request timeout');
             });
             request.end();
@@ -76,8 +76,8 @@ class wunderGround {
             console.log('updateWU exception');
             console.log(ex);
         }
-    }
-    getForeCast() {
+    };
+    wunderGround.prototype.getForeCast = function () {
         var config = this.config;
         if (!config.forecastUrl) {
             return;
@@ -90,13 +90,14 @@ class wunderGround {
         return webRequest_1.default.get(url, null).then(function (data) {
             var wforecast = JSON.parse(data).forecast;
             var forecast = { last: new Date(), periods: [] };
-            wforecast.txt_forecast.forecastday.forEach(period => {
+            wforecast.txt_forecast.forecastday.forEach(function (period) {
                 forecast.periods.push(period);
             });
             return forecast;
         });
-    }
-}
+    };
+    return wunderGround;
+}());
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.default = wunderGround;
 //# sourceMappingURL=wunderGround.js.map

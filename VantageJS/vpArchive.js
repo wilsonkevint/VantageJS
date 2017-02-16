@@ -1,8 +1,14 @@
 "use strict";
-const vpBase_1 = require('./vpBase');
-class vpArchive extends vpBase_1.default {
-    constructor(data, index) {
-        super(data);
+var __extends = (this && this.__extends) || function (d, b) {
+    for (var p in b) if (b.hasOwnProperty(p)) d[p] = b[p];
+    function __() { this.constructor = d; }
+    d.prototype = b === null ? Object.create(b) : (__.prototype = b.prototype, new __());
+};
+var vpBase_1 = require('./vpBase');
+var vpArchive = (function (_super) {
+    __extends(vpArchive, _super);
+    function vpArchive(data, index) {
+        _super.call(this, data);
         this.dataIndx = index + 1;
         if (this.peek(0) != 255) {
             var archDateTime = this.nextDateTime();
@@ -31,7 +37,8 @@ class vpArchive extends vpBase_1.default {
         this.dataIndx += 22;
         this._data = null;
     }
-}
+    return vpArchive;
+}(vpBase_1.default));
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.default = vpArchive;
 //# sourceMappingURL=vpArchive.js.map

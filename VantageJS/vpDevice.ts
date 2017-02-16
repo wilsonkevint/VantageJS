@@ -1,9 +1,10 @@
 ﻿    declare function require(name: string);
     import vpBase from './vpBase';
     import vpArchive from './vpArchive';
-
+ 
     var moment = require('moment');
     var SerialPort = require("serialport");
+    var Promise = require('promise');
     
     export default class vpDevice {
         portName: string;

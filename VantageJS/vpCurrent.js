@@ -1,8 +1,14 @@
 "use strict";
-const vpBase_1 = require('./vpBase');
-class vpCurrent extends vpBase_1.default {
-    constructor(data) {
-        super(data);
+var __extends = (this && this.__extends) || function (d, b) {
+    for (var p in b) if (b.hasOwnProperty(p)) d[p] = b[p];
+    function __() { this.constructor = d; }
+    d.prototype = b === null ? Object.create(b) : (__.prototype = b.prototype, new __());
+};
+var vpBase_1 = require('./vpBase');
+var vpCurrent = (function (_super) {
+    __extends(vpCurrent, _super);
+    function vpCurrent(data) {
+        _super.call(this, data);
         this.dataIndx = 3;
         if (data[0] == 6)
             this.dataIndx++;
@@ -37,7 +43,7 @@ class vpCurrent extends vpBase_1.default {
         this.dateLoaded = new Date();
         this._data = null;
     }
-    fBarometerTrend() {
+    vpCurrent.prototype.fBarometerTrend = function () {
         var trend = this.nextByte();
         var Trend;
         switch (trend) {
@@ -61,16 +67,16 @@ class vpCurrent extends vpBase_1.default {
                 break;
         }
         return Trend;
-    }
-    fWindDirection(degrees) {
+    };
+    vpCurrent.prototype.fWindDirection = function (degrees) {
         var directions = ["N", "NNE", "NE", "ENE", "E", "ESE", "SE", "SSE", "S", "SSW", "SW", "WSW", "W", "WNW", "NW", "NNW", "N"];
         var dirindx = Math.round((degrees / 360 * 16));
         if (dirindx < directions.length)
             return directions[dirindx];
         else
             return "";
-    }
-    fDewpoint(temperature, rh) {
+    };
+    vpCurrent.prototype.fDewpoint = function (temperature, rh) {
         var dewPt = 0;
         try {
             var tem = -1.0 * temperature;
@@ -83,11 +89,11 @@ class vpCurrent extends vpBase_1.default {
             console.log("getDewpoint:" + ex);
         }
         return Math.round(dewPt * 100) / 100;
-    }
-    fStormDate() {
+    };
+    vpCurrent.prototype.fStormDate = function () {
         return vpBase_1.default.date(this.nextDecimal());
-    }
-    fForecastIcon() {
+    };
+    vpCurrent.prototype.fForecastIcon = function () {
         var forecast = "";
         var rainIcon = 1;
         var cloudyIcon = 2;
@@ -136,8 +142,9 @@ class vpCurrent extends vpBase_1.default {
                 break;
         }
         return forecast;
-    }
-}
+    };
+    return vpCurrent;
+}(vpBase_1.default));
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.default = vpCurrent;
 //class baseVP {

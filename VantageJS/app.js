@@ -1,5 +1,5 @@
 "use strict";
-const vantageWS_1 = require('./vantageWS');
+var vantageWS_1 = require('./vantageWS');
 var moment = require('moment');
 var http = require('http');
 var server = http.createServer(requestReceived);
@@ -19,19 +19,19 @@ comPort = config[os.platform() + '_serialPort'];
 webPort = config.webPort;
 server.listen(webPort);
 webSocket();
-let ws = new vantageWS_1.default(comPort, config);
-ws.onCurrent = cur => {
+var ws = new vantageWS_1.default(comPort, config);
+ws.onCurrent = function (cur) {
     current = cur;
     io.sockets.emit('current', JSON.stringify(current));
 };
-ws.onHighLow = hl => {
+ws.onHighLow = function (hl) {
     hilows = hl;
     io.sockets.emit('hilows', JSON.stringify(hilows));
 };
-ws.onAlert = alerts => {
+ws.onAlert = function (alerts) {
     io.sockets.emit('alerts', JSON.stringify(alerts));
 };
-ws.onHistory = history => {
+ws.onHistory = function (history) {
     io.sockets.emit('history', JSON.stringify(history));
 };
 function requestReceived(req, res) {
@@ -114,11 +114,11 @@ function webSocket() {
             socket.emit('hilows', JSON.stringify(ws.hilows));
         if (ws.alerts)
             socket.emit('alerts', JSON.stringify(ws.alerts));
-        socket.on('hilows', (data) => {
+        socket.on('hilows', function (data) {
             console.log('hilows req');
             ws.getHiLows();
         });
-        socket.on('history', (data) => {
+        socket.on('history', function (data) {
             console.log('history request');
             ws.getArchives();
         });
