@@ -88,10 +88,11 @@ function requestReceived(req, res) {
             obj["rain today"] = ws.current.dayRain.toFixed(0);
             obj["storm rain"] = ws.current.stormRain.toFixed(0);
             obj["month rain"] = ws.current.monthRain.toFixed(0);
+            res.end(JSON.stringify(obj));
         }
         catch (ex) {
+            res.end("error");
         }
-        res.end(JSON.stringify(obj));
     }
     else {
         if (ws.current) {
@@ -121,6 +122,9 @@ function webSocket() {
         socket.on('history', function (data) {
             console.log('history request');
             ws.getArchives();
+        });
+        socket.on('message', function (msgtype, msg) {
+            io.sockets.emit('alert', msg);
         });
     });
 }

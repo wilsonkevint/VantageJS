@@ -5,9 +5,9 @@ var __extends = (this && this.__extends) || function (d, b) {
     d.prototype = b === null ? Object.create(b) : (__.prototype = b.prototype, new __());
 };
 var vpBase_1 = require('./vpBase');
-var vpArchive = (function (_super) {
-    __extends(vpArchive, _super);
-    function vpArchive(data, index) {
+var VpArchive = (function (_super) {
+    __extends(VpArchive, _super);
+    function VpArchive(data, index) {
         _super.call(this, data);
         this.dataIndx = index + 1;
         if (this.peek(0) != 255) {
@@ -31,14 +31,14 @@ var vpArchive = (function (_super) {
             this.windHi = this.nextByte();
             this.windHiDir = this.nextByte();
             this.prevWindDir = this.nextByte();
-            this.avgUVIndex = this.nextByte();
-            this.ET = this.nextByte();
+            this.avgUvIndex = this.nextByte();
+            this.et = this.nextByte();
         }
         this.dataIndx += 22;
         this._data = null;
     }
-    return vpArchive;
+    return VpArchive;
 }(vpBase_1.default));
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.default = vpArchive;
+exports.default = VpArchive;
 //# sourceMappingURL=vpArchive.js.map

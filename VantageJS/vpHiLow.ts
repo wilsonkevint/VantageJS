@@ -27,7 +27,7 @@ export default class vpHiLow extends vpBase {
     }
 
 
-    barometer: hiLow
+    barometer: hiLow;
     windSpeed: hiLow;
     inTemperature: hiLow;
     inHumidity: hiLow;

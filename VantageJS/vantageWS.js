@@ -9,18 +9,17 @@ var http = require('http');
 var os = require('os');
 var linq = require('linq');
 var pauseSecs = 30;
-var vantageWS = (function () {
-    function vantageWS(comPort, config) {
+var VantageWs = (function () {
+    function VantageWs(comPort, config) {
         var _this = this;
         this.station = new vpDevice_1.default(comPort);
-        var updateFreqMS = config.updateFrequency * 1000;
+        var updateFreqMs = config.updateFrequency * 1000;
         this.config = config;
         this.wu = new wunderGround_1.default(config);
         this.getAlerts();
         this.station.onOpen = function () {
-            var ctimer;
             _this.getHiLows();
-            ctimer = setInterval(function () {
+            var ctimer = setInterval(function () {
                 if (!_this.pauseLoop)
                     _this.getCurrent();
                 else {
@@ -28,13 +27,14 @@ var vantageWS = (function () {
                 }
                 if (_this.pauseLoop != 0)
                     console.log('pauseLoop: ' + _this.pauseLoop);
-            }, updateFreqMS);
+            }, updateFreqMs);
         };
         setInterval(function () {
             _this.getHiLows();
         }, 360000);
     }
-    vantageWS.prototype.getCurrent = function () {
+    //getCurrent
+    VantageWs.prototype.getCurrent = function () {
         var _this = this;
         this.station.isAvailable().then(function () {
             _this.station.wakeUp().then(function (result) {
@@ -45,32 +45,31 @@ var vantageWS = (function () {
                         if (_this.onCurrent)
                             _this.onCurrent(_this.current);
                     }
-                }, vantageWS.deviceError);
-            }, vantageWS.deviceError);
+                }, VantageWs.deviceError);
+            }, VantageWs.deviceError);
         }, function (err) {
             console.log('hilows device not available');
         });
     };
-    vantageWS.prototype.queryArchives = function (key, group) {
+    VantageWs.prototype.queryArchives = function (key, group) {
         return {
             date: key, min: group.min(), max: group.max()
         };
     };
-    vantageWS.prototype.getArchives = function () {
+    VantageWs.prototype.getArchives = function () {
         var _this = this;
         this.pauseLoop = 30 / this.config.updateFrequency;
         var startDate = (moment().add('months', -1).format("MM/DD/YYYY 00:00"));
         this.station.getArchived(startDate, function (archives) {
-            var hiTemp;
             var lowTemp;
             console.log(archives);
-            hiTemp = linq.from(archives).groupBy('$.archiveDate', '$.outTemp', _this.queryArchives)
+            var hiTemp = linq.from(archives).groupBy('$.archiveDate', '$.outTemp', _this.queryArchives)
                 .log("$.date + ' ' + $.min + ' ' + $.max").toJoinedString();
             if (_this.onHistory)
                 _this.onHistory(archives);
         });
     };
-    vantageWS.prototype.getHiLows = function () {
+    VantageWs.prototype.getHiLows = function () {
         var _this = this;
         this.pauseLoop = 25 / this.config.updateFrequency;
         this.station.isAvailable().then(function () {
@@ -92,10 +91,10 @@ var vantageWS = (function () {
             _this.pauseLoop = 0;
         });
     };
-    vantageWS.deviceError = function (err) {
+    VantageWs.deviceError = function (err) {
         console.log(err);
     };
-    vantageWS.prototype.getForeCast = function () {
+    VantageWs.prototype.getForeCast = function () {
         var _this = this;
         var last;
         if (this.forecast) {
@@ -108,7 +107,7 @@ var vantageWS = (function () {
             });
         }
     };
-    vantageWS.prototype.getAlerts = function () {
+    VantageWs.prototype.getAlerts = function () {
         var _this = this;
         var doalerts = function () {
             _this.wu.getAlerts().then(function (alerts) {
@@ -123,10 +122,10 @@ var vantageWS = (function () {
             doalerts();
         }, 60000 * 15);
     };
-    return vantageWS;
+    return VantageWs;
 }());
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.default = vantageWS;
+exports.default = VantageWs;
 //rl.on('line', (input) => {
 //console.log(`Received: ${input}` + input.length);
 //  if (input.length == 0)

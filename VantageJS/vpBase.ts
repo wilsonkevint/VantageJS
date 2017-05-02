@@ -1,7 +1,7 @@
 ﻿declare function require(name: string);
 var moment = require('moment');
 
-export default class vpBase {
+export default class VpBase {
     _data: Uint8Array;
     dataIndx: number;
 
@@ -25,14 +25,14 @@ export default class vpBase {
             return null;
         }
 
-        var yrs = vpBase.uint16(ardate / 512 + 2000);
-        var months = vpBase.uint16(ardate % 512 / 32);
-        var days = vpBase.uint16(ardate % 512 % 32);
-        var hrs = vpBase.uint16(artime / 100);
-        var min = vpBase.uint16(artime % 100);
+        var yrs = VpBase.uint16(ardate / 512 + 2000);
+        var months = VpBase.uint16(ardate % 512 / 32);
+        var days = VpBase.uint16(ardate % 512 % 32);
+        var hrs = VpBase.uint16(artime / 100);
+        var min = VpBase.uint16(artime % 100);
 
         try {
-            dt = new moment(yrs.toString() + vpBase.pad(months, 2) + vpBase.pad(days, 2) + vpBase.pad(hrs, 2) + vpBase.pad(min,2), 'YYYYMMDDHH:mm');  
+            dt = new moment(yrs.toString() + VpBase.pad(months, 2) + VpBase.pad(days, 2) + VpBase.pad(hrs, 2) + VpBase.pad(min,2), 'YYYYMMDDHH:mm');  
         }
         catch (x) {
             return null;
@@ -52,10 +52,12 @@ export default class vpBase {
     nextTime() :string {
         var time = this.nextDecimal();
         var tm;
+        var hrs;
+        var mins;
 
         if (time != 65535) {
-            var hrs = Math.floor(time / 100);
-            var mins = Math.floor((time / 100 - hrs) * 100);
+            hrs = Math.floor(time / 100);
+            mins = Math.floor((time / 100 - hrs) * 100);
         }
         else
             return "";
@@ -75,7 +77,7 @@ export default class vpBase {
     fBarometer(): number {
         var barom = this.nextDecimal() / 1000;
 
-        return vpBase.round(barom, 2);
+        return VpBase.round(barom, 2);
     }
 
     fTemperature() : number {
@@ -88,7 +90,7 @@ export default class vpBase {
             temp = -(255 - temp1);
 
         try {
-            temp = vpBase.round(temp,2) / 10;
+            temp = VpBase.round(temp,2) / 10;
         }
         catch (x) {
         }
@@ -101,19 +103,19 @@ export default class vpBase {
         if (rain == 65535)
             rain = 0;
 
-        return vpBase.round(rain, 2) / 100;
+        return VpBase.round(rain, 2) / 100;
     }
 
     static date(dt: number): string {
                
-        if (dt == 65535 || dt == 0)
+        if (dt === 65535 || dt === 0)
             return null;
 
         var yrs = (dt & 0x7f) + 2000;
         var days = (dt & 0xf80) >> 7;
         var month = (dt & 0xF000) >> 12;        
 
-        var mdt = yrs.toString() + ' ' + vpBase.pad(month, 2) + ' ' + vpBase.pad(days, 2);
+        var mdt = yrs.toString() + ' ' + VpBase.pad(month, 2) + ' ' + VpBase.pad(days, 2);
         
         mdt = moment(mdt, 'YYYY MM DD').format('MM/DD/YYYY');
 
@@ -149,14 +151,12 @@ export default class vpBase {
     }
 
     static getDateTimeStamp(dt: string) : any {
-        var dtStamp;
-        var tmStamp;
-
+      
         var mdt = moment(dt, 'MM/DD/YYYY'); 
         var month = mdt.month() + 1; 
 
-        dtStamp = (mdt.date() + month * 32 + (mdt.year() - 2000) * 512);
-        tmStamp = (mdt.hour() * 100 + mdt.minute());
+        var dtStamp = (mdt.date() + month * 32 + (mdt.year() - 2000) * 512);
+        var tmStamp = (mdt.hour() * 100 + mdt.minute());
 
         var data = new Array(4);
         data[0] = (dtStamp % 256);

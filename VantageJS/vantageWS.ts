@@ -3,8 +3,8 @@
 import vpDevice from './vpDevice';
 import vpCurrent from './vpCurrent';
 import vpHiLow from './vpHiLow';
-import vpBase from './vpBase';
-import vpArchive from './vpArchive';
+import VpBase from './vpBase';
+import VpArchive from './vpArchive';
 import webRequest from './webRequest';
 import wunderGround from './wunderGround';
 import weatherAlert from './weatherAlert';
@@ -16,7 +16,7 @@ var linq = require('linq');
 
 const pauseSecs: number = 30;
 
-export default class vantageWS {
+export default class VantageWs {
     station: vpDevice;
     current: vpCurrent;
     hilows: vpHiLow;
@@ -32,7 +32,7 @@ export default class vantageWS {
         
     public constructor(comPort: string, config: any) {
         this.station = new vpDevice(comPort);     
-        var updateFreqMS = config.updateFrequency * 1000;
+        var updateFreqMs = config.updateFrequency * 1000;
       
         this.config = config;
         this.wu = new wunderGround(config);
@@ -40,11 +40,10 @@ export default class vantageWS {
         this.getAlerts(); 
 
         this.station.onOpen = ()=> {
-            var ctimer;           
                         
             this.getHiLows(); 
 
-            ctimer = setInterval(() => {
+            var ctimer = setInterval(() => {
                 
                 if (!this.pauseLoop)
                     this.getCurrent();
@@ -57,7 +56,7 @@ export default class vantageWS {
                     console.log('pauseLoop: ' + this.pauseLoop); 
                                 
 
-            }, updateFreqMS);
+            }, updateFreqMs);
         
         }
 
@@ -68,6 +67,7 @@ export default class vantageWS {
     }
       
 
+    //getCurrent
     getCurrent()  {         
 
         this.station.isAvailable().then( ()=> {
@@ -86,9 +86,9 @@ export default class vantageWS {
 
                 }
 
-            }, vantageWS.deviceError);
+            }, VantageWs.deviceError);
 
-        }, vantageWS.deviceError);
+        }, VantageWs.deviceError);
         
         }, err => {
             console.log('hilows device not available');
@@ -107,10 +107,9 @@ export default class vantageWS {
         var startDate = (moment().add('months', -1).format("MM/DD/YYYY 00:00"));
 
         this.station.getArchived(startDate, archives=> {
-            var hiTemp;
             var lowTemp;
             console.log(archives);
-            hiTemp = linq.from(archives).groupBy('$.archiveDate', '$.outTemp', this.queryArchives)
+            var hiTemp = linq.from(archives).groupBy('$.archiveDate', '$.outTemp', this.queryArchives)
                 .log("$.date + ' ' + $.min + ' ' + $.max").toJoinedString();
 
             if (this.onHistory)
@@ -165,7 +164,7 @@ export default class vantageWS {
         var last;          
       
         if (this.forecast) {
-            last = vpBase.timeDiff(this.forecast.last, 'h');            
+            last = VpBase.timeDiff(this.forecast.last, 'h');            
         }
 
         if (!last || last >= 4) {

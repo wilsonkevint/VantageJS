@@ -1,6 +1,6 @@
 ﻿    declare function require(name: string);
     import vpBase from './vpBase';
-    import vpArchive from './vpArchive';
+    import VpArchive from './vpArchive';
  
     var moment = require('moment');
     var SerialPort = require("serialport");
@@ -183,7 +183,7 @@
                         }
 
                         for (var i = 0; i < 5; i++) {
-                            var archrec = new vpArchive(new Uint8Array(received), dataIndx);
+                            var archrec = new VpArchive(new Uint8Array(received), dataIndx);
                             if (archrec.archiveDate)
                                 archives.push(archrec);
                             dataIndx += 52;

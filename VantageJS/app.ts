@@ -1,7 +1,7 @@
 ﻿
 declare function require(name: string);
 
-import vantageWS from './vantageWS';
+import VantageWs from './vantageWS';
 import vpCurrent from './vpCurrent';
 import vpHiLow from './vpHiLow';
 
@@ -29,7 +29,7 @@ webPort = config.webPort;
 server.listen(webPort);
 webSocket();
 
-let ws = new vantageWS(comPort, config);
+let ws = new VantageWs(comPort, config);
 
 ws.onCurrent = cur => {
     current = cur;
@@ -105,18 +105,21 @@ function requestReceived(req, res) {
                 sunset: ws.current.sunset,
                 alerts: ws.alerts.length ? ws.alerts[0].message : 'none'
             }
+
             obj["inside temperature"] = ws.current.inTemperature.toFixed(0);
             obj["temperature"] = ws.current.outTemperature.toFixed(0);
             obj["rain rate"] = ws.current.rainRate.toFixed(0);
             obj["rain today"] = ws.current.dayRain.toFixed(0);
             obj["storm rain"] = ws.current.stormRain.toFixed(0);
             obj["month rain"] = ws.current.monthRain.toFixed(0);
+            res.end(JSON.stringify(obj));
         }
         catch (ex) {
+            res.end("error");
         }
                  
 
-        res.end(JSON.stringify(obj));
+        
     }
     else {
         if (ws.current) {
@@ -154,6 +157,12 @@ function webSocket() {
             console.log('history request');
             ws.getArchives();
         });
+
+       	socket.on('message',
+            (msgtype,msg) => {				 
+                io.sockets.emit('alert', msg);
+            });
+
     });
 
 

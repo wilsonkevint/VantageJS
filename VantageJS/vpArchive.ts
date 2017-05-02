@@ -1,6 +1,6 @@
-﻿import vpBase from './vpBase';
+﻿import VpBase from './vpBase';
 
-export default class vpArchive extends vpBase {
+export default class VpArchive extends VpBase {
 
     constructor(data: Uint8Array, index:number) {
         super(data);
@@ -28,8 +28,8 @@ export default class vpArchive extends vpBase {
             this.windHi = this.nextByte();
             this.windHiDir = this.nextByte();
             this.prevWindDir = this.nextByte();
-            this.avgUVIndex = this.nextByte();
-            this.ET = this.nextByte();
+            this.avgUvIndex = this.nextByte();
+            this.et = this.nextByte();
         }
 
         this.dataIndx += 22;
@@ -54,8 +54,8 @@ export default class vpArchive extends vpBase {
     windHi: number;
     windHiDir: number;
     prevWindDir: number;
-    avgUVIndex: number;
-    ET: number;
+    avgUvIndex: number;
+    et: number;
 
 
 }
