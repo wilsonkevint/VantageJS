@@ -1,14 +1,15 @@
 ﻿
 declare function require(name: string);
 
-import VantageWs from './vantageWS';
-import vpCurrent from './vpCurrent';
-import vpHiLow from './vpHiLow';
+import VantageWs from './VantageWS';
+import VPCurrent from './VPCurrent';
+import VPHiLow from './VPHiLow';
 
 var moment = require('moment');
 var http = require('http');
 
 var server = http.createServer(requestReceived);
+//var io = require('socket.io-client');
 var io = require('socket.io')(server);
 var os = require('os'); 
 var config = require('./VantageJS.json');
@@ -22,6 +23,8 @@ var current;
 var hilows;
 var forecast;
 var ctimer;
+var socket;
+var token;
 
 comPort = config[os.platform() + '_serialPort'];
 webPort = config.webPort;
@@ -46,15 +49,11 @@ ws.onAlert = alerts => {
 
 ws.onHistory = history => {
     io.sockets.emit('history', JSON.stringify(history));
-}
-
- 
+} 
 
 function requestReceived(req, res) {       
-    console.log('webRequest ' + moment().format('hh:mm:ss'));
-    var allowOrigins  = config.allowOrigins[0];
-
-    //console.dir(req.headers); 
+    console.log('WebRequest ' + moment().format('hh:mm:ss'));
+    var allowOrigins  = config.allowOrigins[0];    
     var origin = req.headers.origin;    
 
     var allowOrigin = config.allowOrigins.filter(function (o) {
@@ -67,9 +66,7 @@ function requestReceived(req, res) {
     if (allowOrigin.length)
         allowOrigins = allowOrigin[0];
 
-    console.log(allowOrigins);
-
-    //allowOrigins = '*';
+    console.log(allowOrigins);    
 
     if (req.url.indexOf('hilows') > -1) {
         if (ws.hilows) {
@@ -96,7 +93,7 @@ function requestReceived(req, res) {
         res.writeHead(200, { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': allowOrigins });
         try {
             var obj = {
-                humidity: ws.current.outHumidity.toFixed(0),
+                humidity: ws.current.humidity.toFixed(0),
                 dewpoint: ws.current.dewpoint.toFixed(0),
                 barometer: ws.current.barometer + ' ' + ws.current.barometerTrend,
                 wind: ws.current.windAvg + ' from ' + ws.current.windDirection,
@@ -107,7 +104,7 @@ function requestReceived(req, res) {
             }
 
             obj["inside temperature"] = ws.current.inTemperature.toFixed(0);
-            obj["temperature"] = ws.current.outTemperature.toFixed(0);
+            obj["temperature"] = ws.current.temperature.toFixed(0);
             obj["rain rate"] = ws.current.rainRate.toFixed(0);
             obj["rain today"] = ws.current.dayRain.toFixed(0);
             obj["storm rain"] = ws.current.stormRain.toFixed(0);
@@ -164,9 +161,49 @@ function webSocket() {
             });
 
     });
+}
 
+function clientSocket() {   
+    var post_data = JSON.stringify({client:'weathervsw'});
+    token = '';
 
+    var request = http.request({
+        host: 'rpizero',
+        port: '9002',
+        path: '/login',
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'Content-Length': post_data.length
+        }
+    }, resp => {
+        resp.on('data', chunk => {
+            token += chunk;
+        })
+        resp.on('end', () => {
+            socket = io('http://rpizero:9002');
 
+            socket.on('connect', () => {
+                console.log('connected');
+                socket
+                    .emit('authenticate', { token: token })
+                    .on('authenticated', () => {
+                        console.log('authenticated');
+                        socket.on('current', (x) => {
+                            socket.emit('oncurrent', ws.current);
+                        });
+                    })
+                    .on('unauthorized', function (msg) {
+                        console.log("unauthorized: " + JSON.stringify(msg.data));                     
+                    })
+                   
+            });
+        });
+    }
+    );
+
+    request.write(post_data);
+    request.end();
 }
 
 

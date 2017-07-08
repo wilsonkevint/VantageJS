@@ -1,21 +1,21 @@
 ﻿    declare function require(name: string);
-    import vpBase from './vpBase';
-    import VpArchive from './vpArchive';
+    import VPBase from './VPBase';
+    import VPArchive from './VPArchive';
  
     var moment = require('moment');
     var SerialPort = require("serialport");
-    var Promise = require('promise');
-    
-    export default class vpDevice {
+      
+    export default class VPDevice {
         portName: string;
         port: any;
         onOpen: any;
+        lastActv: any;
         static isBusy: boolean;
      
         public constructor(comPort: string) {        
            
             this.portName = comPort;
-
+            
             this.port = new SerialPort(comPort, {
                 baudRate: 19200,
                 dataBits: 8,
@@ -49,7 +49,7 @@
         }        
 
         errorReceived(err: any) {          
-            vpDevice.isBusy = false;
+            VPDevice.isBusy = false;
         }
 
         readLoop(loops: number, callback: any) {
@@ -64,7 +64,7 @@
            
             var promise = new Promise((resolve, reject) => {
                 var received = [];
-                vpDevice.isBusy = true;
+                VPDevice.isBusy = true;
 
                 if (typeof cmd == 'string')
                     this.port.write(cmd + '\n');
@@ -72,6 +72,7 @@
                     this.port.write(cmd);
 
                 this.dataReceived = (data: Uint8Array) => {
+                    this.lastActv = Date()
 
                     if (expectAck) {
                         if (data[0] == 6) {
@@ -86,7 +87,7 @@
                             }
                         }
                         else {
-                            vpDevice.isBusy = false;
+                            VPDevice.isBusy = false;
                             reject(data);
                         }
                     }
@@ -95,13 +96,13 @@
                     }                    
                                     
                     if (received.length >= reqchars) {
-                        vpDevice.isBusy = false;
+                        VPDevice.isBusy = false;
                         resolve(received);
                     }
                 }
 
                 this.errorReceived = err => {
-                    vpDevice.isBusy = false;
+                    VPDevice.isBusy = false;
                     reject(err);
                 }
 
@@ -128,8 +129,8 @@
         sendArchiveTS(startDate: any, callback:any) {           
 
             var start = moment(startDate, 'MM/DD/YYYY hh:mm');
-            var stamp = vpBase.getDateTimeStamp(start);
-            var crcTS = vpDevice.getCRC(stamp);
+            var stamp = VPBase.getDateTimeStamp(start);
+            var crcTS = VPDevice.getCRC(stamp);
             var buffer = [];
             var received = [];
             var attempts = 0;
@@ -157,7 +158,7 @@
 
         retrieveArchive(buffer: any, callback:any) {
             
-            var base = new vpBase(new Uint8Array(buffer));
+            var base = new VPBase(new Uint8Array(buffer));
             var pgCount = base.nextDecimal();
             var firstRecord = base.nextDecimal();
             var pgIndex = 0;
@@ -174,7 +175,7 @@
                 if (received.length == 267) {
                     var dataIndx = 0;                  
 
-                    if (vpDevice.getCRC(received)) {
+                    if (VPDevice.getCRC(received)) {
 
                         pgIndex++;
 
@@ -183,7 +184,7 @@
                         }
 
                         for (var i = 0; i < 5; i++) {
-                            var archrec = new VpArchive(new Uint8Array(received), dataIndx);
+                            var archrec = new VPArchive(new Uint8Array(received), dataIndx);
                             if (archrec.archiveDate)
                                 archives.push(archrec);
                             dataIndx += 52;
@@ -257,7 +258,7 @@
             for (var i = 0; i < data.length; i++) {
                 var d = data[i];
                 var indx = (crcNum >> 8) ^ d;
-                crcNum = vpBase.uint16((crcNum << 8) ^ vpDevice.crc_table[indx]);
+                crcNum = VPBase.uint16((crcNum << 8) ^ VPDevice.crc_table[indx]);
             }
             return crcNum == 0;
         }
@@ -268,11 +269,11 @@
             for (var i = 0; i < data.length; i++) {
                 var d = data[i];
                 var indx = (crcNum >> 8) ^ d;
-                crcNum = vpBase.uint16( (crcNum << 8) ^ vpDevice.crc_table[indx]);
+                crcNum = VPBase.uint16( (crcNum << 8) ^ VPDevice.crc_table[indx]);
             }
 
-            var byte2 = vpBase.uint16(crcNum / 256);
-            var byte1 = vpBase.uint16(crcNum - byte2 * 256);
+            var byte2 = VPBase.uint16(crcNum / 256);
+            var byte1 = VPBase.uint16(crcNum - byte2 * 256);
 
             return [byte2, byte1];
         }       
@@ -280,21 +281,27 @@
         wakeUp(): any {
            
             var attempts = 0; 
-
+            
             var promise = new Promise((resolve, reject) => {
-                vpDevice.isBusy = true; 
+                if (this.lastActv) {
+                    var diff = VPBase.timeDiff(this.lastActv, 's');
+                    if (diff < 11)
+                        resolve(true);
+                } 
+                VPDevice.isBusy = true; 
 
                 this.port.write('\n');
 
                 this.dataReceived = (data: Uint8Array) => {
 
                     if (data.length == 2 && data[0] == 10 && data[1] == 13) {
-                        vpDevice.isBusy = false;
+                        VPDevice.isBusy = false;
+                        this.lastActv = Date()
                         resolve(true);
                     }
                     else {
                         if (attempts > 2) {
-                            vpDevice.isBusy = false;
+                            VPDevice.isBusy = false;
                             reject(false);
                         }
                         else  
@@ -308,7 +315,7 @@
                 }
 
                 this.errorReceived = err => {
-                    vpDevice.isBusy = false;
+                    VPDevice.isBusy = false;
                     reject(err);
                 }
 
@@ -322,14 +329,14 @@
             var wtimer; 
 
             var promise = new Promise((resolve, reject) => {
-                if (!vpDevice.isBusy) {
+                if (!VPDevice.isBusy) {
                     resolve();
                 }
                 else {
                     var attempts = 0;
 
                     wtimer = setInterval(() => {
-                        if (!vpDevice.isBusy) {
+                        if (!VPDevice.isBusy) {
                             clearInterval(wtimer);
                             resolve();
                         }
@@ -338,7 +345,7 @@
 
                         if (attempts > 60) {            //60 attempts @500ms = 30 secs
                             clearInterval(wtimer);
-                            vpDevice.isBusy = false;
+                            VPDevice.isBusy = false;
                             reject();
                         }
                     }, 500);

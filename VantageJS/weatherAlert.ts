@@ -1,4 +1,4 @@
-﻿export default class weatherAlert {
+﻿export default class WeatherAlert {
     description: string;
     expires: string;
     phenomena:string;

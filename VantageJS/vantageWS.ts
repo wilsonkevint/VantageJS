@@ -1,13 +1,13 @@
 ﻿declare function require(name: string);
 
-import vpDevice from './vpDevice';
-import vpCurrent from './vpCurrent';
-import vpHiLow from './vpHiLow';
-import VpBase from './vpBase';
-import VpArchive from './vpArchive';
-import webRequest from './webRequest';
-import wunderGround from './wunderGround';
-import weatherAlert from './weatherAlert';
+import VPDevice from './VPDevice';
+import VPCurrent from './VPCurrent';
+import VPHiLow from './VPHiLow';
+import VPBase from './VPBase';
+import VPArchive from './vpArchive';
+import WebRequest from './WebRequest';
+import Wunderground from './Wunderground';
+import WeatherAlert from './WeatherAlert';
 
 var moment = require('moment');
 var http = require('http'); 
@@ -17,9 +17,9 @@ var linq = require('linq');
 const pauseSecs: number = 30;
 
 export default class VantageWs {
-    station: vpDevice;
-    current: vpCurrent;
-    hilows: vpHiLow;
+    station: VPDevice;
+    current: VPCurrent;
+    hilows: VPHiLow;
     pauseLoop: number;
     onCurrent: any;
     onHighLow: any;    
@@ -27,15 +27,15 @@ export default class VantageWs {
     onHistory: any;
     config: any;
     forecast: any;
-    wu: wunderGround;
-    alerts: Array<weatherAlert>;
+    wu: Wunderground;
+    alerts: Array<WeatherAlert>;
         
     public constructor(comPort: string, config: any) {
-        this.station = new vpDevice(comPort);     
+        this.station = new VPDevice(comPort);     
         var updateFreqMs = config.updateFrequency * 1000;
       
         this.config = config;
-        this.wu = new wunderGround(config);
+        this.wu = new Wunderground(config);
 
         this.getAlerts(); 
 
@@ -74,11 +74,11 @@ export default class VantageWs {
 
             this.station.wakeUp().then(result => {
 
-                this.station.getData("LOOP 1", 99, true).then(data => {
+                this.station.getData("LOOP 1", 99, true).then(data => {                 
 
-                if (vpDevice.validateCRC(data)) {
+                if (VPDevice.validateCRC(data)) {
 
-                    this.current = new vpCurrent(data);
+                    this.current = new VPCurrent(data);
                     this.wu.upload(this.current);
 
                     if (this.onCurrent)
@@ -127,8 +127,8 @@ export default class VantageWs {
             this.station.wakeUp().then(result => {
                 this.station.getData("HILOWS", 438,true).then(data => {
 
-                    if (vpDevice.validateCRC(data)) {
-                        this.hilows = new vpHiLow(data);
+                    if (VPDevice.validateCRC(data)) {
+                        this.hilows = new VPHiLow(data);
                         this.hilows.dateLoaded = moment().format('YYYY-MM-DD hh:mm:ss');
 
                         if (this.onHighLow)
@@ -138,7 +138,7 @@ export default class VantageWs {
                         
                         this.pauseLoop = 0;
 
-                        console.log('hi temp:' + this.hilows.outTemperature.dailyHi);
+                        console.log('hi temp:' + this.hilows.temperature.dailyHi);
                       
                     }
 
@@ -164,7 +164,7 @@ export default class VantageWs {
         var last;          
       
         if (this.forecast) {
-            last = VpBase.timeDiff(this.forecast.last, 'h');            
+            last = VPBase.timeDiff(this.forecast.last, 'h');            
         }
 
         if (!last || last >= 4) {

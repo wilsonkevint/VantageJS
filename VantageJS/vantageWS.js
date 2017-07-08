@@ -1,130 +1,123 @@
 "use strict";
-var vpDevice_1 = require('./vpDevice');
-var vpCurrent_1 = require('./vpCurrent');
-var vpHiLow_1 = require('./vpHiLow');
-var vpBase_1 = require('./vpBase');
-var wunderGround_1 = require('./wunderGround');
+Object.defineProperty(exports, "__esModule", { value: true });
+const VPDevice_1 = require("./VPDevice");
+const VPCurrent_1 = require("./VPCurrent");
+const VPHiLow_1 = require("./VPHiLow");
+const VPBase_1 = require("./VPBase");
+const Wunderground_1 = require("./Wunderground");
 var moment = require('moment');
 var http = require('http');
 var os = require('os');
 var linq = require('linq');
-var pauseSecs = 30;
-var VantageWs = (function () {
-    function VantageWs(comPort, config) {
-        var _this = this;
-        this.station = new vpDevice_1.default(comPort);
+const pauseSecs = 30;
+class VantageWs {
+    constructor(comPort, config) {
+        this.station = new VPDevice_1.default(comPort);
         var updateFreqMs = config.updateFrequency * 1000;
         this.config = config;
-        this.wu = new wunderGround_1.default(config);
+        this.wu = new Wunderground_1.default(config);
         this.getAlerts();
-        this.station.onOpen = function () {
-            _this.getHiLows();
-            var ctimer = setInterval(function () {
-                if (!_this.pauseLoop)
-                    _this.getCurrent();
+        this.station.onOpen = () => {
+            this.getHiLows();
+            var ctimer = setInterval(() => {
+                if (!this.pauseLoop)
+                    this.getCurrent();
                 else {
-                    _this.pauseLoop--;
+                    this.pauseLoop--;
                 }
-                if (_this.pauseLoop != 0)
-                    console.log('pauseLoop: ' + _this.pauseLoop);
+                if (this.pauseLoop != 0)
+                    console.log('pauseLoop: ' + this.pauseLoop);
             }, updateFreqMs);
         };
-        setInterval(function () {
-            _this.getHiLows();
+        setInterval(() => {
+            this.getHiLows();
         }, 360000);
     }
     //getCurrent
-    VantageWs.prototype.getCurrent = function () {
-        var _this = this;
-        this.station.isAvailable().then(function () {
-            _this.station.wakeUp().then(function (result) {
-                _this.station.getData("LOOP 1", 99, true).then(function (data) {
-                    if (vpDevice_1.default.validateCRC(data)) {
-                        _this.current = new vpCurrent_1.default(data);
-                        _this.wu.upload(_this.current);
-                        if (_this.onCurrent)
-                            _this.onCurrent(_this.current);
+    getCurrent() {
+        this.station.isAvailable().then(() => {
+            this.station.wakeUp().then(result => {
+                this.station.getData("LOOP 1", 99, true).then(data => {
+                    if (VPDevice_1.default.validateCRC(data)) {
+                        this.current = new VPCurrent_1.default(data);
+                        this.wu.upload(this.current);
+                        if (this.onCurrent)
+                            this.onCurrent(this.current);
                     }
                 }, VantageWs.deviceError);
             }, VantageWs.deviceError);
-        }, function (err) {
+        }, err => {
             console.log('hilows device not available');
         });
-    };
-    VantageWs.prototype.queryArchives = function (key, group) {
+    }
+    queryArchives(key, group) {
         return {
             date: key, min: group.min(), max: group.max()
         };
-    };
-    VantageWs.prototype.getArchives = function () {
-        var _this = this;
+    }
+    getArchives() {
         this.pauseLoop = 30 / this.config.updateFrequency;
         var startDate = (moment().add('months', -1).format("MM/DD/YYYY 00:00"));
-        this.station.getArchived(startDate, function (archives) {
+        this.station.getArchived(startDate, archives => {
             var lowTemp;
             console.log(archives);
-            var hiTemp = linq.from(archives).groupBy('$.archiveDate', '$.outTemp', _this.queryArchives)
+            var hiTemp = linq.from(archives).groupBy('$.archiveDate', '$.outTemp', this.queryArchives)
                 .log("$.date + ' ' + $.min + ' ' + $.max").toJoinedString();
-            if (_this.onHistory)
-                _this.onHistory(archives);
+            if (this.onHistory)
+                this.onHistory(archives);
         });
-    };
-    VantageWs.prototype.getHiLows = function () {
-        var _this = this;
+    }
+    getHiLows() {
         this.pauseLoop = 25 / this.config.updateFrequency;
-        this.station.isAvailable().then(function () {
-            _this.station.wakeUp().then(function (result) {
-                _this.station.getData("HILOWS", 438, true).then(function (data) {
-                    if (vpDevice_1.default.validateCRC(data)) {
-                        _this.hilows = new vpHiLow_1.default(data);
-                        _this.hilows.dateLoaded = moment().format('YYYY-MM-DD hh:mm:ss');
-                        if (_this.onHighLow)
-                            _this.onHighLow(_this.hilows);
-                        _this.getForeCast();
-                        _this.pauseLoop = 0;
-                        console.log('hi temp:' + _this.hilows.outTemperature.dailyHi);
+        this.station.isAvailable().then(() => {
+            this.station.wakeUp().then(result => {
+                this.station.getData("HILOWS", 438, true).then(data => {
+                    if (VPDevice_1.default.validateCRC(data)) {
+                        this.hilows = new VPHiLow_1.default(data);
+                        this.hilows.dateLoaded = moment().format('YYYY-MM-DD hh:mm:ss');
+                        if (this.onHighLow)
+                            this.onHighLow(this.hilows);
+                        this.getForeCast();
+                        this.pauseLoop = 0;
+                        console.log('hi temp:' + this.hilows.temperature.dailyHi);
                     }
                 });
             });
-        }, function (err) {
+        }, err => {
             console.log('hilows device not available');
-            _this.pauseLoop = 0;
+            this.pauseLoop = 0;
         });
-    };
-    VantageWs.deviceError = function (err) {
+    }
+    static deviceError(err) {
         console.log(err);
-    };
-    VantageWs.prototype.getForeCast = function () {
-        var _this = this;
+    }
+    getForeCast() {
         var last;
         if (this.forecast) {
-            last = vpBase_1.default.timeDiff(this.forecast.last, 'h');
+            last = VPBase_1.default.timeDiff(this.forecast.last, 'h');
         }
         if (!last || last >= 4) {
-            this.wu.getForeCast().then(function (forecast) {
-                _this.forecast = forecast;
-                _this.hilows.forecast = forecast;
+            this.wu.getForeCast().then(forecast => {
+                this.forecast = forecast;
+                this.hilows.forecast = forecast;
             });
         }
-    };
-    VantageWs.prototype.getAlerts = function () {
-        var _this = this;
-        var doalerts = function () {
-            _this.wu.getAlerts().then(function (alerts) {
-                _this.alerts = alerts;
-                if (alerts.length && _this.onAlert) {
-                    _this.onAlert(alerts);
+    }
+    getAlerts() {
+        var doalerts = () => {
+            this.wu.getAlerts().then(alerts => {
+                this.alerts = alerts;
+                if (alerts.length && this.onAlert) {
+                    this.onAlert(alerts);
                 }
             });
         };
         doalerts();
-        setInterval(function () {
+        setInterval(() => {
             doalerts();
         }, 60000 * 15);
-    };
-    return VantageWs;
-}());
-Object.defineProperty(exports, "__esModule", { value: true });
+    }
+}
 exports.default = VantageWs;
 //rl.on('line', (input) => {
 //console.log(`Received: ${input}` + input.length);
@@ -133,4 +126,4 @@ exports.default = VantageWs;
 //  else
 //	myPort.write(input); 
 //});
-//# sourceMappingURL=vantageWS.js.map
+//# sourceMappingURL=VantageWS.js.map

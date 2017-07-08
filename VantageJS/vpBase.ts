@@ -1,7 +1,7 @@
 ﻿declare function require(name: string);
 var moment = require('moment');
 
-export default class VpBase {
+export default class VPBase {
     _data: Uint8Array;
     dataIndx: number;
 
@@ -25,14 +25,14 @@ export default class VpBase {
             return null;
         }
 
-        var yrs = VpBase.uint16(ardate / 512 + 2000);
-        var months = VpBase.uint16(ardate % 512 / 32);
-        var days = VpBase.uint16(ardate % 512 % 32);
-        var hrs = VpBase.uint16(artime / 100);
-        var min = VpBase.uint16(artime % 100);
+        var yrs = VPBase.uint16(ardate / 512 + 2000);
+        var months = VPBase.uint16(ardate % 512 / 32);
+        var days = VPBase.uint16(ardate % 512 % 32);
+        var hrs = VPBase.uint16(artime / 100);
+        var min = VPBase.uint16(artime % 100);
 
         try {
-            dt = new moment(yrs.toString() + VpBase.pad(months, 2) + VpBase.pad(days, 2) + VpBase.pad(hrs, 2) + VpBase.pad(min,2), 'YYYYMMDDHH:mm');  
+            dt = new moment(yrs.toString() + VPBase.pad(months, 2) + VPBase.pad(days, 2) + VPBase.pad(hrs, 2) + VPBase.pad(min,2), 'YYYYMMDDHH:mm');  
         }
         catch (x) {
             return null;
@@ -77,7 +77,7 @@ export default class VpBase {
     fBarometer(): number {
         var barom = this.nextDecimal() / 1000;
 
-        return VpBase.round(barom, 2);
+        return VPBase.round(barom, 2);
     }
 
     fTemperature() : number {
@@ -90,7 +90,7 @@ export default class VpBase {
             temp = -(255 - temp1);
 
         try {
-            temp = VpBase.round(temp,2) / 10;
+            temp = VPBase.round(temp,2) / 10;
         }
         catch (x) {
         }
@@ -103,7 +103,7 @@ export default class VpBase {
         if (rain == 65535)
             rain = 0;
 
-        return VpBase.round(rain, 2) / 100;
+        return VPBase.round(rain, 2) / 100;
     }
 
     static date(dt: number): string {
@@ -115,7 +115,7 @@ export default class VpBase {
         var days = (dt & 0xf80) >> 7;
         var month = (dt & 0xF000) >> 12;        
 
-        var mdt = yrs.toString() + ' ' + VpBase.pad(month, 2) + ' ' + VpBase.pad(days, 2);
+        var mdt = yrs.toString() + ' ' + VPBase.pad(month, 2) + ' ' + VPBase.pad(days, 2);
         
         mdt = moment(mdt, 'YYYY MM DD').format('MM/DD/YYYY');
 

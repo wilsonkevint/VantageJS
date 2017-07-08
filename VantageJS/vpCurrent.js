@@ -1,14 +1,9 @@
 "use strict";
-var __extends = (this && this.__extends) || function (d, b) {
-    for (var p in b) if (b.hasOwnProperty(p)) d[p] = b[p];
-    function __() { this.constructor = d; }
-    d.prototype = b === null ? Object.create(b) : (__.prototype = b.prototype, new __());
-};
-var vpBase_1 = require('./vpBase');
-var vpCurrent = (function (_super) {
-    __extends(vpCurrent, _super);
-    function vpCurrent(data) {
-        _super.call(this, data);
+Object.defineProperty(exports, "__esModule", { value: true });
+const VPBase_1 = require("./VPBase");
+class VPCurrent extends VPBase_1.default {
+    constructor(data) {
+        super(data);
         this.dataIndx = 3;
         if (data[0] == 6)
             this.dataIndx++;
@@ -17,14 +12,14 @@ var vpCurrent = (function (_super) {
         this.barometer = this.fBarometer();
         this.inTemperature = this.fTemperature();
         this.inHumidity = this.nextByte();
-        this.outTemperature = this.fTemperature();
+        this.temperature = this.fTemperature();
         this.windSpeed = this.nextByte();
         this.windAvg = this.nextByte();
         this.windDir = this.nextDecimal();
         this.windDirection = this.fWindDirection(this.windDir);
         this.dataIndx += 15;
-        this.outHumidity = this.nextByte();
-        this.dewpoint = this.fDewpoint(this.outTemperature, this.outHumidity);
+        this.humidity = this.nextByte();
+        this.dewpoint = this.fDewpoint(this.temperature, this.humidity);
         this.dataIndx += 7;
         this.rainRate = this.fRain();
         this.dataIndx += 3;
@@ -43,7 +38,7 @@ var vpCurrent = (function (_super) {
         this.dateLoaded = new Date();
         this._data = null;
     }
-    vpCurrent.prototype.fBarometerTrend = function () {
+    fBarometerTrend() {
         var trend = this.nextByte();
         var Trend;
         switch (trend) {
@@ -67,16 +62,16 @@ var vpCurrent = (function (_super) {
                 break;
         }
         return Trend;
-    };
-    vpCurrent.prototype.fWindDirection = function (degrees) {
+    }
+    fWindDirection(degrees) {
         var directions = ["N", "NNE", "NE", "ENE", "E", "ESE", "SE", "SSE", "S", "SSW", "SW", "WSW", "W", "WNW", "NW", "NNW", "N"];
         var dirindx = Math.round((degrees / 360 * 16));
         if (dirindx < directions.length)
             return directions[dirindx];
         else
             return "";
-    };
-    vpCurrent.prototype.fDewpoint = function (temperature, rh) {
+    }
+    fDewpoint(temperature, rh) {
         var dewPt = 0;
         try {
             var tem = -1.0 * temperature;
@@ -89,11 +84,11 @@ var vpCurrent = (function (_super) {
             console.log("getDewpoint:" + ex);
         }
         return Math.round(dewPt * 100) / 100;
-    };
-    vpCurrent.prototype.fStormDate = function () {
-        return vpBase_1.default.date(this.nextDecimal());
-    };
-    vpCurrent.prototype.fForecastIcon = function () {
+    }
+    fStormDate() {
+        return VPBase_1.default.date(this.nextDecimal());
+    }
+    fForecastIcon() {
         var forecast = "";
         var rainIcon = 1;
         var cloudyIcon = 2;
@@ -142,11 +137,9 @@ var vpCurrent = (function (_super) {
                 break;
         }
         return forecast;
-    };
-    return vpCurrent;
-}(vpBase_1.default));
-Object.defineProperty(exports, "__esModule", { value: true });
-exports.default = vpCurrent;
+    }
+}
+exports.default = VPCurrent;
 //class baseVP {
 //    private _data: Uint8Array;
 //    constructor(data: Uint8Array) {
@@ -190,7 +183,7 @@ exports.default = vpCurrent;
 //        if (temp2 == 255)
 //            temp = -(255 - temp1);
 //        try {
-//            temp = vpBase.round(temp, 2) / 10;
+//            temp = VPBase.round(temp, 2) / 10;
 //        }
 //        catch (x) {
 //        }
@@ -200,7 +193,7 @@ exports.default = vpCurrent;
 //        var rain = this.nextDecimal();
 //        if (rain == 65535)
 //            rain = 0;
-//        return vpBase.round(rain, 2);
+//        return VPBase.round(rain, 2);
 //    }
 //    static date(dt: number): Date {
 //        if (dt == 65535 || dt == 0)
@@ -211,4 +204,4 @@ exports.default = vpCurrent;
 //        return new Date(yrs, month, days);
 //    }
 //}
-//# sourceMappingURL=vpCurrent.js.map
+//# sourceMappingURL=VPCurrent.js.map

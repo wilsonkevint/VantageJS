@@ -1,6 +1,5 @@
-﻿import VpBase from './vpBase';
-
-export default class VpArchive extends VpBase {
+﻿import VPBase from './VPBase';
+export default class VPArchive extends VPBase {
 
     constructor(data: Uint8Array, index:number) {
         super(data);
@@ -23,7 +22,7 @@ export default class VpArchive extends VpBase {
             this.windSamples = this.nextDecimal();
             this.inTemp = this.fTemperature();
             this.inHumidity = this.nextByte();
-            this.outHumidity = this.nextByte();
+            this.humidity = this.nextByte();
             this.windAvg = this.nextByte();
             this.windHi = this.nextByte();
             this.windHiDir = this.nextByte();
@@ -49,7 +48,7 @@ export default class VpArchive extends VpBase {
     windSamples: number;
     inTemp: number;
     inHumidity: number;
-    outHumidity: number;
+    humidity: number;
     windAvg: number;
     windHi: number;
     windHiDir: number;

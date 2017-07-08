@@ -1,12 +1,12 @@
 ﻿declare function require(name: string);
 
-import webRequest from './webRequest';
-import weatherAlert from './weatherAlert';
-import vpCurrent from './vpCurrent';
+import WebRequest from './WebRequest';
+import WeatherAlert from './WeatherAlert';
+import VPCurrent from './VPCurrent';
 var moment = require('moment');
 var http = require('http');
 
-export default class wunderGround {
+export default class Wunderground {
     config: any;
 
     constructor(config) {
@@ -25,13 +25,13 @@ export default class wunderGround {
 
         var url = eval('`' + config.wuAlertUrl + '`');
 
-        return webRequest.get(url, null).then(data => {
+        return WebRequest.get(url, null).then(data => {
             var response = JSON.parse(data);
 
-            var wuAlerts = new Array<weatherAlert>();
+            var wuAlerts = new Array<WeatherAlert>();
 
             response.alerts.forEach(alert => {
-                var wuAlert = new weatherAlert();
+                var wuAlert = new WeatherAlert();
                 wuAlert.description = alert.description;
                 wuAlert.expires = alert.expires;
                 wuAlert.phenomena = alert.phenomena;
@@ -47,7 +47,7 @@ export default class wunderGround {
         });  
     }
 
-    upload(current: vpCurrent) {
+    upload(current: VPCurrent) {
 
         var config = this.config;
         var wuUserID = config.wuUserID;
@@ -56,9 +56,9 @@ export default class wunderGround {
 
         var path = eval('`' + config.uploadPath + '`')
         +'&winddir=' + current.windDir + '&windspeedmph=' + current.windAvg
-            + '&windgustmph=' + current.windSpeed + '&tempf=' + current.outTemperature
+            + '&windgustmph=' + current.windSpeed + '&tempf=' + current.temperature
             + '&rainin=' + current.rainRate + '&dailyrainin=' + current.dayRain + '&baromin=' + current.barometer
-            + '&humidity=' + current.outHumidity + '&dewptf=' + current.dewpoint
+            + '&humidity=' + current.humidity + '&dewptf=' + current.dewpoint
             + '&action=updateraw&realtime=1&rtfreq=' + config.updateFrequency;
 
         var options = {
@@ -72,7 +72,7 @@ export default class wunderGround {
         try {
             var request = http.request(options, response => {
                 response.on('data', chunk => {
-                    //console.log('update WU: ' + String.fromCharCode.apply(null, chunk) + moment().format('HH:mm:ss') + ' temp:' + current.outTemperature);
+                    console.log('update WU: ' + String.fromCharCode.apply(null, chunk) + moment().format('HH:mm:ss') + ' temp:' + current.temperature);
                     current.wuUpdated = new Date();
                 });
                 response.on('timeout', socket => {
@@ -109,7 +109,7 @@ export default class wunderGround {
         var state = cityState[1]; 
         var url = eval('`' + config.forecastUrl + '`');      
 
-        return webRequest.get(url, null).then(function(data) {
+        return WebRequest.get(url, null).then(function(data) {
             var wforecast = JSON.parse(data).forecast;
             var forecast = { last: new Date(), periods: [] };
 

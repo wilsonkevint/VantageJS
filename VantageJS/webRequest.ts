@@ -1,9 +1,8 @@
 ﻿declare function require(name: string);
 
 var http = require('http');
-var Promise = require('promise');
 
-export default class webRequest {
+export default class WebRequest {
 
         static get(host: string, path: string): any {
 

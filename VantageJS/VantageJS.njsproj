@@ -15,7 +15,7 @@
     <SchemaVersion>2.0</SchemaVersion>
     <ProjectGuid>00140fbe-f484-4813-b14c-6f7b07dfb50a</ProjectGuid>
     <ProjectHome>.</ProjectHome>
-    <StartupFile>app.ts</StartupFile>
+    <StartupFile>expressServer.ts</StartupFile>
     <StartWebBrowser>False</StartWebBrowser>
     <SearchPath>
     </SearchPath>
@@ -28,7 +28,7 @@
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)' == 'Debug' ">
     <DebugSymbols>true</DebugSymbols>
-    <TypeScriptTarget>ES5</TypeScriptTarget>
+    <TypeScriptTarget>ES6</TypeScriptTarget>
     <TypeScriptJSXEmit>None</TypeScriptJSXEmit>
     <TypeScriptCompileOnSaveEnabled>True</TypeScriptCompileOnSaveEnabled>
     <TypeScriptNoImplicitAny>False</TypeScriptNoImplicitAny>
@@ -46,20 +46,28 @@
   <ItemGroup>
     <Content Include="package.json" />
     <Content Include="README.md" />
+    <Content Include="socketServer.json">
+      <SubType>Code</SubType>
+    </Content>
     <Content Include="VantageJS.json" />
   </ItemGroup>
   <ItemGroup>
     <TypeScriptCompile Include="app.ts" />
+    <TypeScriptCompile Include="expressServer.ts" />
+    <TypeScriptCompile Include="SocketServer.ts">
+      <SubType>Code</SubType>
+    </TypeScriptCompile>
     <TypeScriptCompile Include="test.ts" />
-    <TypeScriptCompile Include="vpArchive.ts" />
-    <TypeScriptCompile Include="vpBase.ts" />
-    <TypeScriptCompile Include="vpCurrent.ts" />
-    <TypeScriptCompile Include="vpDevice.ts" />
-    <TypeScriptCompile Include="vpHiLow.ts" />
-    <TypeScriptCompile Include="vantageWS.ts" />
-    <TypeScriptCompile Include="weatherAlert.ts" />
-    <TypeScriptCompile Include="webRequest.ts" />
-    <TypeScriptCompile Include="wunderGround.ts" />
+    <TypeScriptCompile Include="VPArchive.ts" />
+    <TypeScriptCompile Include="VPBase.ts" />
+    <TypeScriptCompile Include="VPVerify.ts" />
+    <TypeScriptCompile Include="VPCurrent.ts" />
+    <TypeScriptCompile Include="VPDevice.ts" />
+    <TypeScriptCompile Include="VPHiLow.ts" />
+    <TypeScriptCompile Include="VantageWS.ts" />
+    <TypeScriptCompile Include="WeatherAlert.ts" />
+    <TypeScriptCompile Include="WebRequest.ts" />
+    <TypeScriptCompile Include="Wunderground.ts" />
   </ItemGroup>
   <!-- Do not delete the following Import Project.  While this appears to do nothing it is a marker for setting TypeScript properties before our import that depends on them. -->
   <Import Project="$(MSBuildExtensionsPath32)\Microsoft\VisualStudio\v$(VisualStudioVersion)\TypeScript\Microsoft.TypeScript.targets" Condition="False" />

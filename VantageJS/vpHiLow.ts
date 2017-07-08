@@ -1,6 +1,6 @@
-﻿import vpBase from './vpBase';
+﻿import VPBase from './VPBase';
 
-export default class vpHiLow extends vpBase {
+export default class VPHiLow extends VPBase {
     constructor(data: Uint8Array) {
         super(data);
         this.dataIndx = 0;
@@ -9,7 +9,7 @@ export default class vpHiLow extends vpBase {
         this.windSpeed = this.fWindSpeed();
         this.inTemperature = this.fTemperatureHL(false);
         this.inHumidity = this.fHumidity(false);
-        this.outTemperature = this.fTemperatureHL(true);
+        this.temperature = this.fTemperatureHL(true);
         this.dewpoint = this.fDewPoint();
         this.windChill = this.fWindChill();
         this.heatIndex = this.fHeatIndex();
@@ -21,36 +21,36 @@ export default class vpHiLow extends vpBase {
 
         this.dataIndx += 150;                       //extra/leaf/soil
 
-        this.outHumidity = this.fHumidity(true);  
+        this.humidity = this.fHumidity(true);  
 
         this._data = null;
     }
 
 
-    barometer: hiLow;
-    windSpeed: hiLow;
-    inTemperature: hiLow;
-    inHumidity: hiLow;
-    outTemperature: hiLow;
-    dewpoint: hiLow;
-    windChill: hiLow;
-    heatIndex: hiLow;
-    thswIndex: hiLow;
-    radiation: hiLow;
-    uvHigh: hiLow;
-    rainHigh: hiLow;
-    outHumidity: hiLow;
+    barometer: HiLow;
+    windSpeed: HiLow;
+    inTemperature: HiLow;
+    inHumidity: HiLow;
+    temperature: HiLow;
+    dewpoint: HiLow;
+    windChill: HiLow;
+    heatIndex: HiLow;
+    thswIndex: HiLow;
+    radiation: HiLow;
+    uvHigh: HiLow;
+    rainHigh: HiLow;
+    humidity: HiLow;
     dateLoaded: string;
     forecast: any;
 
-    fBarometerHL(): hiLow {
-        var hilow = new hiLow();
-        hilow.dailyLow = vpBase.round(this.nextDecimal() / 1000, 2);
-        hilow.dailyHi = vpBase.round(this.nextDecimal() / 1000, 2);
-        hilow.monthLow = vpBase.round(this.nextDecimal() / 1000, 2);
-        hilow.monthHi = vpBase.round(this.nextDecimal() / 1000, 2);
-        hilow.yearLow = vpBase.round(this.nextDecimal() / 1000, 2); 
-        hilow.yearHi = vpBase.round(this.nextDecimal() / 1000, 2); 
+    fBarometerHL(): HiLow {
+        var hilow = new HiLow();
+        hilow.dailyLow = VPBase.round(this.nextDecimal() / 1000, 2);
+        hilow.dailyHi = VPBase.round(this.nextDecimal() / 1000, 2);
+        hilow.monthLow = VPBase.round(this.nextDecimal() / 1000, 2);
+        hilow.monthHi = VPBase.round(this.nextDecimal() / 1000, 2);
+        hilow.yearLow = VPBase.round(this.nextDecimal() / 1000, 2); 
+        hilow.yearHi = VPBase.round(this.nextDecimal() / 1000, 2); 
 
         hilow.dailyLowTime = this.nextTime();
         hilow.dailyHighTime = this.nextTime();
@@ -58,8 +58,8 @@ export default class vpHiLow extends vpBase {
         return hilow;
     }
 
-    fWindSpeed(): hiLow {
-        var hilow = new hiLow();
+    fWindSpeed(): HiLow {
+        var hilow = new HiLow();
 
         hilow.dailyHi = this.nextByte();
         hilow.dailyHighTime = this.nextTime();
@@ -70,8 +70,8 @@ export default class vpHiLow extends vpBase {
         return hilow;
     }
 
-    fTemperatureHL(outside: boolean): hiLow {
-        var hilow = new hiLow();
+    fTemperatureHL(outside: boolean): HiLow {
+        var hilow = new HiLow();
 
         //the sequence of low high is reversed inside vs outside (blame Davis)
         var dailyHi = this.fTemperature();
@@ -102,7 +102,7 @@ export default class vpHiLow extends vpBase {
     }
 
     fHumidity(outside: boolean) {
-        var hilow = new hiLow();
+        var hilow = new HiLow();
 
         if (!outside) {
             hilow.dailyHi = this.nextByte();
@@ -142,8 +142,8 @@ export default class vpHiLow extends vpBase {
         return hilow;
     }
 
-    fDewPoint(): hiLow {
-        var hilow = new hiLow();
+    fDewPoint(): HiLow {
+        var hilow = new HiLow();
 
         hilow.dailyLow = this.nextDecimal();
         hilow.dailyHi = this.nextDecimal();
@@ -160,8 +160,8 @@ export default class vpHiLow extends vpBase {
         return hilow;
     }
 
-    fWindChill(): hiLow {
-        var low = new hiLow();
+    fWindChill(): HiLow {
+        var low = new HiLow();
 
         low.dailyLow = this.nextDecimal();
         low.dailyLowTime = this.nextTime();
@@ -172,8 +172,8 @@ export default class vpHiLow extends vpBase {
         return low;
     }
 
-    fHeatIndex(): hiLow {
-        var hi = new hiLow();
+    fHeatIndex(): HiLow {
+        var hi = new HiLow();
 
         hi.dailyHi = this.nextDecimal();
         hi.dailyHighTime = this.nextTime();
@@ -184,8 +184,8 @@ export default class vpHiLow extends vpBase {
         return hi;
     }
 
-    fRainHL(): hiLow {
-        var hi = new hiLow();
+    fRainHL(): HiLow {
+        var hi = new HiLow();
         hi.dailyHi = this.nextDecimal() / 100;
         hi.dailyHighTime = this.nextTime();
 
@@ -196,8 +196,8 @@ export default class vpHiLow extends vpBase {
         return hi;
     }
 
-    fUVHigh(): hiLow {
-        var hi = new hiLow();
+    fUVHigh(): HiLow {
+        var hi = new HiLow();
         hi.dailyHi = this.nextByte();
         hi.dailyHighTime = this.nextTime();
         hi.monthHi = this.nextByte();
@@ -207,7 +207,7 @@ export default class vpHiLow extends vpBase {
 }
 
 
-class hiLow {
+class HiLow {
     hourlyHi;
     dailyLow;
     dailyHi;

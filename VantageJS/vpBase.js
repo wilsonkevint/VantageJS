@@ -1,41 +1,42 @@
 "use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
 var moment = require('moment');
-var VpBase = (function () {
-    function VpBase(data) {
+class VPBase {
+    constructor(data) {
         this._data = data;
         this.dataIndx = 0;
     }
-    VpBase.prototype.nextByte = function () {
+    nextByte() {
         var val = this._data[this.dataIndx];
         this.dataIndx += 1;
         return val;
-    };
-    VpBase.prototype.nextDateTime = function () {
+    }
+    nextDateTime() {
         var dt;
         var ardate = this.nextDecimal();
         var artime = this.nextDecimal();
         if (ardate == 65535 || !ardate) {
             return null;
         }
-        var yrs = VpBase.uint16(ardate / 512 + 2000);
-        var months = VpBase.uint16(ardate % 512 / 32);
-        var days = VpBase.uint16(ardate % 512 % 32);
-        var hrs = VpBase.uint16(artime / 100);
-        var min = VpBase.uint16(artime % 100);
+        var yrs = VPBase.uint16(ardate / 512 + 2000);
+        var months = VPBase.uint16(ardate % 512 / 32);
+        var days = VPBase.uint16(ardate % 512 % 32);
+        var hrs = VPBase.uint16(artime / 100);
+        var min = VPBase.uint16(artime % 100);
         try {
-            dt = new moment(yrs.toString() + VpBase.pad(months, 2) + VpBase.pad(days, 2) + VpBase.pad(hrs, 2) + VpBase.pad(min, 2), 'YYYYMMDDHH:mm');
+            dt = new moment(yrs.toString() + VPBase.pad(months, 2) + VPBase.pad(days, 2) + VPBase.pad(hrs, 2) + VPBase.pad(min, 2), 'YYYYMMDDHH:mm');
         }
         catch (x) {
             return null;
         }
         return dt;
-    };
-    VpBase.prototype.nextDecimal = function () {
+    }
+    nextDecimal() {
         var byte1 = this.nextByte();
         var byte2 = this.nextByte();
         return byte2 * 256 + byte1;
-    };
-    VpBase.prototype.nextTime = function () {
+    }
+    nextTime() {
         var time = this.nextDecimal();
         var tm;
         var hrs;
@@ -47,52 +48,52 @@ var VpBase = (function () {
         else
             return "";
         return moment().hours(hrs).minutes(mins).format('h:mm a');
-    };
-    VpBase.prototype.peek = function (offset) {
+    }
+    peek(offset) {
         return this._data[this.dataIndx + offset];
-    };
-    VpBase.round = function (value, precision) {
+    }
+    static round(value, precision) {
         var multiplier = Math.pow(10, precision || 0);
         return Math.round(value * multiplier) / multiplier;
-    };
-    VpBase.prototype.fBarometer = function () {
+    }
+    fBarometer() {
         var barom = this.nextDecimal() / 1000;
-        return VpBase.round(barom, 2);
-    };
-    VpBase.prototype.fTemperature = function () {
+        return VPBase.round(barom, 2);
+    }
+    fTemperature() {
         var temp1 = this.peek(0);
         var temp2 = this.peek(1);
         var temp = this.nextDecimal();
         if (temp2 == 255)
             temp = -(255 - temp1);
         try {
-            temp = VpBase.round(temp, 2) / 10;
+            temp = VPBase.round(temp, 2) / 10;
         }
         catch (x) {
         }
         return temp;
-    };
-    VpBase.prototype.fRain = function () {
+    }
+    fRain() {
         var rain = this.nextDecimal();
         if (rain == 65535)
             rain = 0;
-        return VpBase.round(rain, 2) / 100;
-    };
-    VpBase.date = function (dt) {
+        return VPBase.round(rain, 2) / 100;
+    }
+    static date(dt) {
         if (dt === 65535 || dt === 0)
             return null;
         var yrs = (dt & 0x7f) + 2000;
         var days = (dt & 0xf80) >> 7;
         var month = (dt & 0xF000) >> 12;
-        var mdt = yrs.toString() + ' ' + VpBase.pad(month, 2) + ' ' + VpBase.pad(days, 2);
+        var mdt = yrs.toString() + ' ' + VPBase.pad(month, 2) + ' ' + VPBase.pad(days, 2);
         mdt = moment(mdt, 'YYYY MM DD').format('MM/DD/YYYY');
         return mdt;
-    };
-    VpBase.pad = function (num, size) {
+    }
+    static pad(num, size) {
         var s = "000000000" + num;
         return s.substr(s.length - size);
-    };
-    VpBase.timeDiff = function (dt, type) {
+    }
+    static timeDiff(dt, type) {
         var diff = new Date().getMilliseconds() - dt.getMilliseconds();
         diff = Math.abs(diff);
         var seconds = Math.floor(diff / 1000);
@@ -110,8 +111,8 @@ var VpBase = (function () {
                 break;
         }
         return diff;
-    };
-    VpBase.getDateTimeStamp = function (dt) {
+    }
+    static getDateTimeStamp(dt) {
         var mdt = moment(dt, 'MM/DD/YYYY');
         var month = mdt.month() + 1;
         var dtStamp = (mdt.date() + month * 32 + (mdt.year() - 2000) * 512);
@@ -122,12 +123,10 @@ var VpBase = (function () {
         data[2] = (tmStamp % 256);
         data[3] = Math.round(tmStamp / 256);
         return data;
-    };
-    VpBase.uint16 = function (n) {
+    }
+    static uint16(n) {
         return n & 0xFFFF;
-    };
-    return VpBase;
-}());
-Object.defineProperty(exports, "__esModule", { value: true });
-exports.default = VpBase;
-//# sourceMappingURL=vpBase.js.map
+    }
+}
+exports.default = VPBase;
+//# sourceMappingURL=VPBase.js.map

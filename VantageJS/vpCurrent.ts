@@ -1,6 +1,6 @@
-﻿import vpBase from './vpBase';
+﻿import VPBase from './VPBase';
 
-export default class vpCurrent extends vpBase {
+export default class VPCurrent extends VPBase {
 
     constructor(data: Uint8Array) {
         super(data);
@@ -16,7 +16,7 @@ export default class vpCurrent extends vpBase {
         this.barometer = this.fBarometer();
         this.inTemperature = this.fTemperature();
         this.inHumidity = this.nextByte();
-        this.outTemperature = this.fTemperature();
+        this.temperature = this.fTemperature();
         this.windSpeed = this.nextByte();
         this.windAvg = this.nextByte();
         this.windDir = this.nextDecimal();
@@ -24,8 +24,8 @@ export default class vpCurrent extends vpBase {
 
         this.dataIndx += 15;
 
-        this.outHumidity = this.nextByte();
-        this.dewpoint = this.fDewpoint(this.outTemperature, this.outHumidity);
+        this.humidity = this.nextByte();
+        this.dewpoint = this.fDewpoint(this.temperature, this.humidity);
 
         this.dataIndx += 7;
 
@@ -56,12 +56,12 @@ export default class vpCurrent extends vpBase {
     barometer: number;
     inTemperature: number;
     inHumidity: number;
-    outTemperature: number;
+    temperature: number;
     windSpeed: number;
     windAvg: number;
     windDir: number;
     windDirection: string;
-    outHumidity: number;
+    humidity: number;
     dewpoint: number;
     rainRate: number;
     stormRain: number;
@@ -135,7 +135,7 @@ export default class vpCurrent extends vpBase {
     }
 
     fStormDate(): string {
-        return vpBase.date(this.nextDecimal());
+        return VPBase.date(this.nextDecimal());
     }
 
     fForecastIcon(): string {
@@ -255,7 +255,7 @@ export default class vpCurrent extends vpBase {
 //            temp = -(255 - temp1);
 
 //        try {
-//            temp = vpBase.round(temp, 2) / 10;
+//            temp = VPBase.round(temp, 2) / 10;
 //        }
 //        catch (x) {
 //        }
@@ -268,7 +268,7 @@ export default class vpCurrent extends vpBase {
 //        if (rain == 65535)
 //            rain = 0;
 
-//        return vpBase.round(rain, 2);
+//        return VPBase.round(rain, 2);
 //    }
 
 //    static date(dt: number): Date {
