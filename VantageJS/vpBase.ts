@@ -152,17 +152,17 @@ export default class VPBase {
 
     static getDateTimeStamp(dt: string) : any {
       
-        var mdt = moment(dt, 'MM/DD/YYYY'); 
+        var mdt = moment(dt, 'MM/DD/YYYY HH:mm'); 
         var month = mdt.month() + 1; 
 
         var dtStamp = (mdt.date() + month * 32 + (mdt.year() - 2000) * 512);
         var tmStamp = (mdt.hour() * 100 + mdt.minute());
 
         var data = new Array(4);
-        data[0] = (dtStamp % 256);
-        data[1] = Math.round(dtStamp / 256);
-        data[2] = (tmStamp % 256);
-        data[3] = Math.round(tmStamp / 256);
+        data[0] = Math.trunc(dtStamp % 256);
+        data[1] = Math.trunc(dtStamp / 256);
+        data[2] = Math.trunc(tmStamp % 256);
+        data[3] = Math.trunc(tmStamp / 256);
 
         return data;
     }

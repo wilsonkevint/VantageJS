@@ -15,7 +15,7 @@
     <SchemaVersion>2.0</SchemaVersion>
     <ProjectGuid>00140fbe-f484-4813-b14c-6f7b07dfb50a</ProjectGuid>
     <ProjectHome>.</ProjectHome>
-    <StartupFile>expressServer.ts</StartupFile>
+    <StartupFile>app.ts</StartupFile>
     <StartWebBrowser>False</StartWebBrowser>
     <SearchPath>
     </SearchPath>

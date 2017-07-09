@@ -10,6 +10,7 @@
         port: any;
         onOpen: any;
         lastActv: any;
+        dataReceived: any;
         static isBusy: boolean;
      
         public constructor(comPort: string) {        
@@ -42,19 +43,27 @@
             this.port.on('data', (data: Uint8Array) => {
                 this.dataReceived(data);
             });
-        }
-
-
-        dataReceived(data: Uint8Array) {
-        }        
+        }      
 
         errorReceived(err: any) {          
             VPDevice.isBusy = false;
         }
 
-        readLoop(loops: number, callback: any) {
-            this.dataReceived =data => {
-                callback(data); 
+        readLoop(loops: number, callback: any): any {
+            this.dataReceived = (data: Uint8Array) => {
+                var received = [];               
+
+                if (data[0] == 6) {
+
+                    if (data.length > 1) {
+                        received.push.apply(received, data.slice(1));
+                    }
+                }
+                else {
+                    received.push.apply(received, data);
+                }     
+
+                callback(received); 
             }
 
             this.port.write('LOOP ' + loops.toString() + '\n');
@@ -72,8 +81,6 @@
                     this.port.write(cmd);
 
                 this.dataReceived = (data: Uint8Array) => {
-                    this.lastActv = Date()
-
                     if (expectAck) {
                         if (data[0] == 6) {
                             expectAck = false;
@@ -93,12 +100,12 @@
                     }
                     else {
                         received.push.apply(received, data);
-                    }                    
-                                    
+                    }
+
                     if (received.length >= reqchars) {
                         VPDevice.isBusy = false;
                         resolve(received);
-                    }
+                    }        
                 }
 
                 this.errorReceived = err => {
@@ -124,12 +131,10 @@
                 });
             });
 
-        }
+        }       
 
-        sendArchiveTS(startDate: any, callback:any) {           
-
-            var start = moment(startDate, 'MM/DD/YYYY hh:mm');
-            var stamp = VPBase.getDateTimeStamp(start);
+        sendArchiveTS(startDate: string, callback:any) {            
+            var stamp = VPBase.getDateTimeStamp(startDate);
             var crcTS = VPDevice.getCRC(stamp);
             var buffer = [];
             var received = [];
@@ -145,7 +150,7 @@
                     attempts++;
 
                     setTimeout(() => {
-                        this.sendArchiveTS(buffer, callback);                      
+                        this.sendArchiveTS(startDate, callback);                      
                     }, 500);
                 }
                 else {
@@ -283,11 +288,11 @@
             var attempts = 0; 
             
             var promise = new Promise((resolve, reject) => {
-                if (this.lastActv) {
-                    var diff = VPBase.timeDiff(this.lastActv, 's');
-                    if (diff < 11)
-                        resolve(true);
-                } 
+                //if (this.lastActv) {
+                //    var diff = VPBase.timeDiff(this.lastActv, 's');
+                //    if (diff < 11)
+                //        resolve(true);
+                //} 
                 VPDevice.isBusy = true; 
 
                 this.port.write('\n');

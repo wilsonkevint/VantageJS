@@ -71,6 +71,13 @@ function requestReceived(req, res) {
             res.end("no data");
         }
     }
+    if (req.url.indexOf('archives') > -1) {
+        ws.getArchives();
+        ws.onHistory = history => {
+            res.writeHead(200, { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': allowOrigins });
+            res.end(JSON.stringify(history));
+        };
+    }
     else if (req.url.indexOf('alexa') > -1) {
         res.writeHead(200, { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': allowOrigins });
         try {

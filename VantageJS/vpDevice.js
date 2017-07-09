@@ -30,14 +30,21 @@ class VPDevice {
             this.dataReceived(data);
         });
     }
-    dataReceived(data) {
-    }
     errorReceived(err) {
         VPDevice.isBusy = false;
     }
     readLoop(loops, callback) {
-        this.dataReceived = data => {
-            callback(data);
+        this.dataReceived = (data) => {
+            var received = [];
+            if (data[0] == 6) {
+                if (data.length > 1) {
+                    received.push.apply(received, data.slice(1));
+                }
+            }
+            else {
+                received.push.apply(received, data);
+            }
+            callback(received);
         };
         this.port.write('LOOP ' + loops.toString() + '\n');
     }
@@ -50,7 +57,6 @@ class VPDevice {
             else
                 this.port.write(cmd);
             this.dataReceived = (data) => {
-                this.lastActv = Date();
                 if (expectAck) {
                     if (data[0] == 6) {
                         expectAck = false;
@@ -93,8 +99,7 @@ class VPDevice {
         });
     }
     sendArchiveTS(startDate, callback) {
-        var start = moment(startDate, 'MM/DD/YYYY hh:mm');
-        var stamp = VPBase_1.default.getDateTimeStamp(start);
+        var stamp = VPBase_1.default.getDateTimeStamp(startDate);
         var crcTS = VPDevice.getCRC(stamp);
         var buffer = [];
         var received = [];
@@ -107,7 +112,7 @@ class VPDevice {
             if (attempts < 4) {
                 attempts++;
                 setTimeout(() => {
-                    this.sendArchiveTS(buffer, callback);
+                    this.sendArchiveTS(startDate, callback);
                 }, 500);
             }
             else {
@@ -179,11 +184,11 @@ class VPDevice {
     wakeUp() {
         var attempts = 0;
         var promise = new Promise((resolve, reject) => {
-            if (this.lastActv) {
-                var diff = VPBase_1.default.timeDiff(this.lastActv, 's');
-                if (diff < 11)
-                    resolve(true);
-            }
+            //if (this.lastActv) {
+            //    var diff = VPBase.timeDiff(this.lastActv, 's');
+            //    if (diff < 11)
+            //        resolve(true);
+            //} 
             VPDevice.isBusy = true;
             this.port.write('\n');
             this.dataReceived = (data) => {
