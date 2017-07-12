@@ -3,6 +3,7 @@
 import WebRequest from './WebRequest';
 import WeatherAlert from './WeatherAlert';
 import VPCurrent from './VPCurrent';
+import Logger from './Common';
 var moment = require('moment');
 var http = require('http');
 
@@ -71,32 +72,31 @@ export default class Wunderground {
 
         try {
             var request = http.request(options, response => {
-                response.on('data', chunk => {
-                    console.log('update WU: ' + String.fromCharCode.apply(null, chunk) + moment().format('HH:mm:ss') + ' temp:' + current.temperature);
+                response.on('data', chunk => {                    
                     current.wuUpdated = new Date();
                 });
                 response.on('timeout', socket => {
-                    console.log('resp timeout');
+                    Logger.error('upload resp timeout');
                 });
                 response.on('error', err => {
-                    console.log('resp error' + err);
+                    Logger.error('upload resp error' + err);
                 });
             });
             request.on('error', err => {
-                console.log('request error ' + err);
+                Logger.error('upload error ' + err);
             });
             request.setTimeout(30000, () => {
-                console.log('request timeout');
+                Logger.error('upload timeout');
             });
             request.end();
         }
         catch (ex) {
-            console.log('updateWU exception');
-            console.log(ex);
+            Logger.error('upload exception');
+            Logger.error(ex);
         }
     }
 
-    getForeCast(): any {        
+    getForecast(): any {        
         var config = this.config; 
 
         if (!config.forecastUrl) {

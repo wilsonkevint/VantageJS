@@ -1,5 +1,5 @@
 ﻿declare function require(name: string);
-
+import Logger from './Common';
 var http = require('http');
 
 var server = http.createServer(requestReceived);
@@ -55,7 +55,7 @@ function requestReceived(req, res) {
                
             }
             catch (e) {
-                console.log(e)
+                Logger.info(e)
             }
 
             res.writeHead(200);
@@ -131,13 +131,13 @@ function requestReceived(req, res) {
 //socket.io connection
 function webSocket() {
     io.on('connection', function (socket) {
-        console.log('socket connection vp');        
+        Logger.info('socket connection vp');        
 
         sendInit(socket);
 
         socket.on('current', (data) => {
             ws.current = JSON.parse(data);
-            console.log('current temp:' + ws.current.temperature)
+            Logger.info('current temp:' + ws.current.temperature)
             socket.broadcast.emit('current', data);
            
         });
@@ -145,12 +145,12 @@ function webSocket() {
         socket.on('hilows', (data) => {
             ws.hilows = JSON.parse(data);
             ws.forecast = ws.hilows.forecast
-            console.log('hilows update');
+            Logger.info('hilows update');
             //ws.getHiLows();
         });
 
         socket.on('history', (data) => {
-            console.log('history request');
+            Logger.info('history request');
             //ws.getArchives();
         });
 

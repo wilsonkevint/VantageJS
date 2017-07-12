@@ -94,7 +94,7 @@ class VPBase {
         return s.substr(s.length - size);
     }
     static timeDiff(dt, type) {
-        var diff = new Date().getMilliseconds() - dt.getMilliseconds();
+        var diff = new Date().getTime() - dt.getTime();
         diff = Math.abs(diff);
         var seconds = Math.floor(diff / 1000);
         var minutes = Math.floor(seconds / 60);

@@ -2,32 +2,44 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 const VPBase_1 = require("./VPBase");
 const VPArchive_1 = require("./VPArchive");
+const Common_1 = require("./Common");
+var process = require('process');
 var moment = require('moment');
 var SerialPort = require("serialport");
 class VPDevice {
     constructor(comPort) {
+        this.loopCount = 0;
         this.portName = comPort;
-        this.port = new SerialPort(comPort, {
-            baudRate: 19200,
-            dataBits: 8,
-            stopBits: 1,
-            parity: 'none',
-            parser: SerialPort.parsers.raw
-        });
+        try {
+            this.port = new SerialPort(comPort, {
+                baudRate: 19200,
+                dataBits: 8,
+                stopBits: 1,
+                parity: 'none',
+                parser: SerialPort.parsers.raw
+            });
+        }
+        catch (e) {
+            Common_1.default.error('VPDevice:' + e);
+            process.exit(-1);
+        }
         this.port.on('open', data => {
             if (this.onOpen)
                 this.onOpen();
-            console.log('comport open');
+            Common_1.default.info('comport open');
         });
         this.port.on('close', () => {
-            console.log('comport closed');
+            Common_1.default.info('comport closed');
         });
         this.port.on('error', err => {
             this.errorReceived(err);
-            console.log('comport ' + err);
+            Common_1.default.error(err.message);
+            process.exit(-1);
         });
         this.port.on('data', (data) => {
-            this.dataReceived(data);
+            //console.log('ondata', data.length);
+            if (this.dataReceived)
+                this.dataReceived(data);
         });
     }
     errorReceived(err) {
@@ -45,17 +57,14 @@ class VPDevice {
                 received.push.apply(received, data);
             }
             callback(received);
+            this.loopCount++;
         };
         this.port.write('LOOP ' + loops.toString() + '\n');
     }
-    getData(cmd, reqchars, expectAck) {
+    getSerial(cmd, reqchars, expectAck) {
         var promise = new Promise((resolve, reject) => {
             var received = [];
             VPDevice.isBusy = true;
-            if (typeof cmd == 'string')
-                this.port.write(cmd + '\n');
-            else
-                this.port.write(cmd);
             this.dataReceived = (data) => {
                 if (expectAck) {
                     if (data[0] == 6) {
@@ -85,51 +94,76 @@ class VPDevice {
                 VPDevice.isBusy = false;
                 reject(err);
             };
+            if (typeof cmd == 'string')
+                this.port.write(cmd + '\n');
+            else {
+                var buffer = new Uint8Array(cmd);
+                this.port.write(buffer);
+            }
         });
         return promise;
     }
-    getArchived(startDate, callback) {
+    getArchived(startDate) {
         var archives;
-        this.isAvailable().then(() => {
-            this.wakeUp().then(result => {
-                this.getData("DMPAFT", 1, true).then(data => {
-                    this.sendArchiveTS(startDate, callback);
-                });
+        var cmd = startDate != null ? 'DMPAFT' : 'DMP';
+        var promise = new Promise((resolve, reject) => {
+            this.sendArchiveCmd(cmd).then(result => {
+                if (cmd == 'DMPAFT') {
+                    var ts = this.getArchiveTS(startDate);
+                    this.getSerial(ts, 6, true).then(data => {
+                        this.retrieveArchive(data, false, (archives) => {
+                            resolve(archives);
+                        });
+                    }, err => {
+                        reject();
+                        Common_1.default.error('getArchived error');
+                    });
+                }
+                else {
+                    this.retrieveArchive(result, true, (archives) => {
+                        resolve(archives);
+                    });
+                }
             });
         });
+        return promise;
     }
-    sendArchiveTS(startDate, callback) {
+    sendArchiveCmd(cmd) {
+        return new Promise((resolve, reject) => {
+            var rj = err => {
+                Common_1.default.error(err);
+                reject(err);
+            };
+            this.isAvailable().then(() => {
+                this.wakeUp().then(result => {
+                    this.getSerial(cmd, 1, true).then(data => {
+                        resolve(data);
+                    }, rj);
+                }, rj);
+            }, rj);
+        });
+    }
+    getArchiveTS(startDate) {
         var stamp = VPBase_1.default.getDateTimeStamp(startDate);
         var crcTS = VPDevice.getCRC(stamp);
         var buffer = [];
-        var received = [];
-        var attempts = 0;
         Array.prototype.push.apply(buffer, stamp);
         Array.prototype.push.apply(buffer, crcTS);
-        this.getData(buffer, 6, true).then(data => {
-            this.retrieveArchive(data, callback);
-        }, err => {
-            if (attempts < 4) {
-                attempts++;
-                setTimeout(() => {
-                    this.sendArchiveTS(startDate, callback);
-                }, 500);
-            }
-            else {
-                callback('error');
-                console.log('sendArchiveTS attempted 3 times');
-            }
-        });
+        return buffer;
     }
-    retrieveArchive(buffer, callback) {
+    retrieveArchive(buffer, allPages, callback) {
         var base = new VPBase_1.default(new Uint8Array(buffer));
-        var pgCount = base.nextDecimal();
-        var firstRecord = base.nextDecimal();
+        var pgCount;
+        var firstRecord;
         var pgIndex = 0;
         var archives = [];
         var received = [];
-        console.log('retrieving ' + pgCount + ' pages');
-        this.dataReceived = data => {
+        pgCount = base.nextDecimal();
+        pgCount = allPages ? 511 : pgCount;
+        firstRecord = base.nextDecimal();
+        Common_1.default.info('archive retrieving ' + pgCount + ' pages');
+        this.port.write([6]); //acknowledge- start download
+        this.dataReceived = (data) => {
             if (received.length < 267)
                 received.push.apply(received, data);
             if (received.length == 267) {
@@ -146,7 +180,7 @@ class VPDevice {
                         dataIndx += 52;
                     }
                     received = [];
-                    console.log('retrieved page ' + pgIndex + ' of ' + pgCount);
+                    Common_1.default.info('retrieved page ' + pgIndex + ' of ' + pgCount);
                     if (pgIndex == pgCount) {
                         callback(archives);
                     }
@@ -159,7 +193,6 @@ class VPDevice {
                 }
             }
         };
-        this.port.write([6]); //acknowledge- start download
     }
     static validateCRC(data) {
         var crcNum = 0;
@@ -190,29 +223,34 @@ class VPDevice {
             //        resolve(true);
             //} 
             VPDevice.isBusy = true;
-            this.port.write('\n');
             this.dataReceived = (data) => {
-                if (data.length == 2 && data[0] == 10 && data[1] == 13) {
-                    VPDevice.isBusy = false;
-                    this.lastActv = Date();
-                    resolve(true);
+                if (data.length == 99) {
+                    console.log('wakeup got LOOP data');
                 }
                 else {
-                    if (attempts > 2) {
+                    if (data && data.length == 2 && data[0] == 10 && data[1] == 13) {
                         VPDevice.isBusy = false;
-                        reject(false);
+                        this.lastActv = Date();
+                        resolve(true);
                     }
-                    else
-                        setTimeout(() => {
-                            this.port.write('\n');
-                        }, 1000);
-                    attempts++;
+                    else {
+                        if (attempts > 2) {
+                            VPDevice.isBusy = false;
+                            reject(false);
+                        }
+                        else
+                            setTimeout(() => {
+                                this.port.write('\n');
+                            }, 2000);
+                        attempts++;
+                    }
                 }
             };
             this.errorReceived = err => {
                 VPDevice.isBusy = false;
                 reject(err);
             };
+            this.port.write('\n');
         });
         return promise;
     }

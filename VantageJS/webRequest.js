@@ -1,5 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
+const Common_1 = require("./Common");
 var http = require('http');
 class WebRequest {
     static get(host, path) {
@@ -39,8 +40,8 @@ class WebRequest {
                 request.end();
             }
             catch (ex) {
-                console.log('getWebRequest exception');
-                console.log(ex);
+                Common_1.default.info('getWebRequest exception');
+                Common_1.default.info(ex);
                 reject(ex);
             }
         });

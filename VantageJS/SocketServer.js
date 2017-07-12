@@ -1,3 +1,6 @@
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+const Common_1 = require("./Common");
 var http = require('http');
 var server = http.createServer(requestReceived);
 var io = require('socket.io')(server);
@@ -39,7 +42,7 @@ function requestReceived(req, res) {
                 }
             }
             catch (e) {
-                console.log(e);
+                Common_1.default.info(e);
             }
             res.writeHead(200);
             res.end("");
@@ -106,21 +109,21 @@ function requestReceived(req, res) {
 //socket.io connection
 function webSocket() {
     io.on('connection', function (socket) {
-        console.log('socket connection vp');
+        Common_1.default.info('socket connection vp');
         sendInit(socket);
         socket.on('current', (data) => {
             ws.current = JSON.parse(data);
-            console.log('current temp:' + ws.current.temperature);
+            Common_1.default.info('current temp:' + ws.current.temperature);
             socket.broadcast.emit('current', data);
         });
         socket.on('hilows', (data) => {
             ws.hilows = JSON.parse(data);
             ws.forecast = ws.hilows.forecast;
-            console.log('hilows update');
+            Common_1.default.info('hilows update');
             //ws.getHiLows();
         });
         socket.on('history', (data) => {
-            console.log('history request');
+            Common_1.default.info('history request');
             //ws.getArchives();
         });
         socket.on('message', (msgtype, msg) => {

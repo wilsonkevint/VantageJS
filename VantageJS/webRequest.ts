@@ -1,5 +1,5 @@
 ﻿declare function require(name: string);
-
+import Logger from './Common';
 var http = require('http');
 
 export default class WebRequest {
@@ -51,8 +51,8 @@ export default class WebRequest {
 
             }
             catch (ex) {
-                console.log('getWebRequest exception');
-                console.log(ex);
+                Logger.info('getWebRequest exception');
+                Logger.info(ex);
                 reject(ex);
             }
         });

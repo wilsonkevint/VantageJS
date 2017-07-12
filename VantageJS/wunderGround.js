@@ -2,6 +2,7 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 const WebRequest_1 = require("./WebRequest");
 const WeatherAlert_1 = require("./WeatherAlert");
+const Common_1 = require("./Common");
 var moment = require('moment');
 var http = require('http');
 class Wunderground {
@@ -55,30 +56,29 @@ class Wunderground {
         try {
             var request = http.request(options, response => {
                 response.on('data', chunk => {
-                    console.log('update WU: ' + String.fromCharCode.apply(null, chunk) + moment().format('HH:mm:ss') + ' temp:' + current.temperature);
                     current.wuUpdated = new Date();
                 });
                 response.on('timeout', socket => {
-                    console.log('resp timeout');
+                    Common_1.default.error('upload resp timeout');
                 });
                 response.on('error', err => {
-                    console.log('resp error' + err);
+                    Common_1.default.error('upload resp error' + err);
                 });
             });
             request.on('error', err => {
-                console.log('request error ' + err);
+                Common_1.default.error('upload error ' + err);
             });
             request.setTimeout(30000, () => {
-                console.log('request timeout');
+                Common_1.default.error('upload timeout');
             });
             request.end();
         }
         catch (ex) {
-            console.log('updateWU exception');
-            console.log(ex);
+            Common_1.default.error('upload exception');
+            Common_1.default.error(ex);
         }
     }
-    getForeCast() {
+    getForecast() {
         var config = this.config;
         if (!config.forecastUrl) {
             return;

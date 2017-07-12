@@ -1,9 +1,11 @@
 ﻿    declare function require(name: string);
     import VPBase from './VPBase';
     import VPArchive from './VPArchive';
- 
+    import Logger from './Common';
+    var process = require('process');
     var moment = require('moment');
     var SerialPort = require("serialport");
+   
       
     export default class VPDevice {
         portName: string;
@@ -12,36 +14,46 @@
         lastActv: any;
         dataReceived: any;
         static isBusy: boolean;
+        loopCount: number=0;
      
         public constructor(comPort: string) {        
            
             this.portName = comPort;
-            
-            this.port = new SerialPort(comPort, {
-                baudRate: 19200,
-                dataBits: 8,
-                stopBits: 1,
-                parity: 'none',
-                parser: SerialPort.parsers.raw
-            });
+
+            try {
+                this.port = new SerialPort(comPort, {
+                    baudRate: 19200,
+                    dataBits: 8,
+                    stopBits: 1,
+                    parity: 'none',
+                    parser: SerialPort.parsers.raw
+                });
+            }
+            catch (e) {
+                Logger.error('VPDevice:' + e);
+                process.exit(-1);
+            }
 
             this.port.on('open',data => {
                 if (this.onOpen)
                     this.onOpen();
-                console.log('comport open');
+                Logger.info('comport open');
             });
 
             this.port.on('close', ()=> {
-                console.log('comport closed');
+                Logger.info('comport closed');
             });
 
             this.port.on('error',err => {
                 this.errorReceived(err); 
-                console.log('comport ' + err);
+                Logger.error(err.message);
+                process.exit(-1);
             });
 
             this.port.on('data', (data: Uint8Array) => {
-                this.dataReceived(data);
+                //console.log('ondata', data.length);
+                if (this.dataReceived)
+                    this.dataReceived(data);
             });
         }      
 
@@ -64,21 +76,17 @@
                 }     
 
                 callback(received); 
+                this.loopCount++;
             }
 
             this.port.write('LOOP ' + loops.toString() + '\n');
         }
               
-        getData(cmd: any, reqchars: number, expectAck: boolean): any {
+        getSerial(cmd: any, reqchars: number, expectAck: boolean): any {
            
             var promise = new Promise((resolve, reject) => {
                 var received = [];
                 VPDevice.isBusy = true;
-
-                if (typeof cmd == 'string')
-                    this.port.write(cmd + '\n');
-                else
-                    this.port.write(cmd);
 
                 this.dataReceived = (data: Uint8Array) => {
                     if (expectAck) {
@@ -113,72 +121,105 @@
                     reject(err);
                 }
 
+                if (typeof cmd == 'string')
+                    this.port.write(cmd + '\n');
+                else {
+                    var buffer = new Uint8Array(cmd);
+                    this.port.write(buffer);
+                }
+
             });
 
             return promise;
         }
 
-        getArchived(startDate: string, callback:any) {
-            var archives;           
-            
-            this.isAvailable().then(() => {
+        getArchived(startDate: string) {
+            var archives;      
+            var cmd = startDate != null ? 'DMPAFT': 'DMP';      
 
-                this.wakeUp().then(result => {
+            var promise = new Promise((resolve, reject) => {
 
-                    this.getData("DMPAFT", 1,true).then(data => {
-                        this.sendArchiveTS(startDate, callback);                          
-                    });
-                });
+                this.sendArchiveCmd(cmd).then(result => {
+                    if (cmd == 'DMPAFT') {
+                        var ts = this.getArchiveTS(startDate);
+                        this.getSerial(ts, 6, true).then(data => {
+
+                            this.retrieveArchive(data,false, (archives) => {
+                                resolve(archives);
+                            });
+                        },
+                            err => {                   
+                                reject();
+                                Logger.error('getArchived error');
+                        });                               
+                    }
+                    else {
+                        this.retrieveArchive(result,true, (archives) => {
+                            resolve(archives);
+                        });                       
+                    }       
+                   
+                });     
             });
+                            
+               
+
+            return promise;
 
         }       
 
-        sendArchiveTS(startDate: string, callback:any) {            
-            var stamp = VPBase.getDateTimeStamp(startDate);
-            var crcTS = VPDevice.getCRC(stamp);
-            var buffer = [];
-            var received = [];
-            var attempts = 0;
-
-            Array.prototype.push.apply(buffer, stamp);
-            Array.prototype.push.apply(buffer, crcTS);    
-
-            this.getData(buffer, 6,true).then(data => {
-                this.retrieveArchive(data, callback);     
-            },err => {
-                if (attempts < 4) {
-                    attempts++;
-
-                    setTimeout(() => {
-                        this.sendArchiveTS(startDate, callback);                      
-                    }, 500);
+        sendArchiveCmd(cmd) {
+            return new Promise((resolve,reject)=>{
+                var rj = err => {
+                    Logger.error(err);
+                    reject(err);
                 }
-                else {
-                    callback('error');
-                    console.log('sendArchiveTS attempted 3 times');
-                }
+
+                this.isAvailable().then(() => {
+                        this.wakeUp().then(result => {
+                            this.getSerial(cmd, 1,true).then(data => {
+                                resolve(data);
+                            }, rj);
+                        },rj);
+                },rj);
             });
-
         }
 
-        retrieveArchive(buffer: any, callback:any) {
+        
+
+        getArchiveTS(startDate: string) {            
+            var stamp = VPBase.getDateTimeStamp(startDate);
+            var crcTS = VPDevice.getCRC(stamp);
+            var buffer = [];  
+
+            Array.prototype.push.apply(buffer, stamp);
+            Array.prototype.push.apply(buffer, crcTS);  
+
+            return buffer;
+        }
+
+        retrieveArchive(buffer: any, allPages,callback) {
             
             var base = new VPBase(new Uint8Array(buffer));
-            var pgCount = base.nextDecimal();
-            var firstRecord = base.nextDecimal();
+            var pgCount;
+            var firstRecord;
             var pgIndex = 0;
             var archives = [];   
             var received = [];          
+                       
+            pgCount = base.nextDecimal();
+            pgCount = allPages ? 511 : pgCount; 
+            firstRecord = base.nextDecimal();           
 
-            console.log('retrieving ' + pgCount + ' pages'); 
-            
-            this.dataReceived =data => {
+            Logger.info('archive retrieving ' + pgCount + ' pages');
+            this.port.write([6]);       //acknowledge- start download
 
+            this.dataReceived = (data: any) => {
                 if (received.length < 267)
                     received.push.apply(received, data);
 
                 if (received.length == 267) {
-                    var dataIndx = 0;                  
+                    var dataIndx = 0;
 
                     if (VPDevice.getCRC(received)) {
 
@@ -197,7 +238,7 @@
 
                         received = [];
 
-                        console.log('retrieved page ' + pgIndex + ' of ' + pgCount); 
+                        Logger.info('retrieved page ' + pgIndex + ' of ' + pgCount);
 
                         if (pgIndex == pgCount) {
                             callback(archives);
@@ -211,15 +252,12 @@
                         this.port.write(0x21);                  //crc error.. request send again
                     }
 
-                }     
-
-               
-                            
+                }
             }
 
-            this.port.write([6]);         //acknowledge- start download
+           
         }
-
+ 
 
 
         static crc_table = [
@@ -295,26 +333,28 @@
                 //} 
                 VPDevice.isBusy = true; 
 
-                this.port.write('\n');
-
-                this.dataReceived = (data: Uint8Array) => {
-
-                    if (data.length == 2 && data[0] == 10 && data[1] == 13) {
-                        VPDevice.isBusy = false;
-                        this.lastActv = Date()
-                        resolve(true);
+                this.dataReceived = (data: any) => {
+                    if (data.length == 99) {
+                        console.log('wakeup got LOOP data');
                     }
                     else {
-                        if (attempts > 2) {
+                        if (data && data.length == 2 && data[0] == 10 && data[1] == 13) {
                             VPDevice.isBusy = false;
-                            reject(false);
+                            this.lastActv = Date()
+                            resolve(true);
                         }
-                        else  
-                            setTimeout(() => {
-                                this.port.write('\n');
-                            }, 1000);
+                        else {
+                            if (attempts > 2) {
+                                VPDevice.isBusy = false;
+                                reject(false);
+                            }
+                            else  
+                                setTimeout(() => {
+                                    this.port.write('\n');
+                                }, 2000);
 
-                        attempts++;
+                            attempts++;
+                        }
                     }
                         
                 }
@@ -324,8 +364,11 @@
                     reject(err);
                 }
 
-
+                 this.port.write('\n');
+                
             });
+
+            
 
             return promise;
         }

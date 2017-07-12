@@ -1,5 +1,4 @@
-﻿declare function require(name: string);
-
+﻿declare function require(name: string); 
 import VPDevice from './VPDevice';
 import VPCurrent from './VPCurrent';
 import VPHiLow from './VPHiLow';
@@ -8,6 +7,8 @@ import VPArchive from './vpArchive';
 import WebRequest from './WebRequest';
 import Wunderground from './Wunderground';
 import WeatherAlert from './WeatherAlert';
+import Logger from './Common';
+import MongoDB from './MongoDB'; 
 
 var moment = require('moment');
 var http = require('http'); 
@@ -15,6 +16,7 @@ var os = require('os');
 var linq = require('linq');
 
 export default class VantageWs {
+    db:any;
     station: VPDevice;
     current: VPCurrent;
     hilows: VPHiLow;  
@@ -26,9 +28,9 @@ export default class VantageWs {
     forecast: any;
     wu: Wunderground;
     alerts: Array<WeatherAlert>;
-    loopCount: number;
+    loopCount: number;    
     pauseTimer: number;
-    pauseLoop: boolean;
+    loopTimer: number;
     
     public constructor(comPort: string, config: any) {
         this.station = new VPDevice(comPort);     
@@ -36,43 +38,62 @@ export default class VantageWs {
       
         this.config = config;
         this.wu = new Wunderground(config);
-        this.loopCount = 0;
-      
-        this.getAlerts();
-       
+                    
+        this.getAlerts();      
 
-        this.station.onOpen = ()=> {                       
-            this.getHiLows();
-          
-            var ctimer = setInterval(() => {
-                if (this.loopCount == 0 && !this.pauseLoop) {
-                    this.loopCount = 100;
-                    console.log('start loop');
-                    this.getCurrent();
-                }
-
-                if (this.loopCount > 0)
-                    this.loopCount--;
-            }, 2500);
-        
+        this.station.onOpen = () => {
+            this.startLoop();   
         }
 
-        setInterval(() => {
-            this.getHiLows();
-        }, 60*60*1000); 
+        var mongo = new MongoDB(config);
+        mongo.connect().then(() => {
+            this.db = mongo.db;
+            Logger.info('database connected');
+        })        
      
     }
-    
-    getCurrent()  {         
 
+    startLoop() {
+        this.loopCount = 0;
+        console.log('start loop ' + Date());
+
+        this.loopTimer = setInterval(() => {
+
+            if (this.loopCount <= 0) {
+                this.getHiLows(() => {
+                    this.loopCount = 99;
+                    if (this.current) {
+                        console.log('temp:' + this.current.temperature);
+                    }
+                    this.beginLoop();
+                });
+            }
+            else {
+                var last = null;
+                if (this.current)
+                    last = VPBase.timeDiff(this.current.dateLoaded, 's');
+
+                if (last && last > 5) {
+                    Logger.warn('last current loaded at ' + this.current.dateLoaded);
+                    Logger.warn('restarting loop');
+                    this.loopCount = 0;
+                }
+            }
+
+        }, 2000);
+    }
+
+    beginLoop() {   
+        //console.log('beginLoop ' + Date());
         this.station.isAvailable().then( ()=> {
 
-            this.station.wakeUp().then(result => {               
-                this.station.readLoop(99, data => {
-                    //console.log('loopcnt ' + this.loopCount);
+            this.station.wakeUp().then(result => {
+                this.station.readLoop(this.loopCount, data => {                  
+                    this.loopCount--;
+
                     if (VPDevice.validateCRC(data)) {
 
-                        this.current = new VPCurrent(data);
+                        this.current = new VPCurrent(data);                        
                         this.wu.upload(this.current);
 
                         if (this.onCurrent)
@@ -88,50 +109,51 @@ export default class VantageWs {
 
     queryArchives(key, group) {
         return {
-            date: key, min: group.min(), max: group.max()
+            date: key, min: group.min(), max: group.max(), count: group.count()
         }
     }
 
-    getArchives() {      
-        var startDate = (moment().add(-4, 'hours').format("MM/DD/YYYY HH:mm"));
-        this.pauseLoop = true;         
+    getArchives(startDate) {      
+        if (startDate)         
+            startDate = moment(startDate, "MM/DD/YYYY").format("MM/DD/YYYY"); 
 
-        this.pauseTimer = setInterval(() => {
-            this.pauseLoop = false;           
-        }, 120000);
+        this.stopLoop(120);        
 
-        this.station.getArchived(startDate, archives => { 
+        this.station.getArchived(startDate).then(archives => { 
             var lowTemp;
          
-            //var hiTemp = linq.from(archives).groupBy('$.archiveDate', '$.outTemp', this.queryArchives)
-            //    .log("$.date + ' ' + $.min + ' ' + $.max").toJoinedString();
+            var hiTemp = linq.from(archives).groupBy('$.archiveDate', '$.outTemp', this.queryArchives)
+            hiTemp.forEach(t => {
+                console.log(t);
+            });          
 
-            //console.log('archives hi temp' + hiTemp);
-
-            if (this.onHistory) {               
-                this.onHistory(archives);
+            try {              
+                this.db.collection('archive').insertMany(archives).then(res => {
+                    console.log('inserted ' + res.insertedCount);
+                });
+            }
+            catch (e) {
+                Logger.error(e);
             }
 
-            if (this.pauseTimer) {
-                clearInterval(this.pauseTimer)
-                this.pauseLoop = false;
-                this.loopCount = 0;
-                this.pauseTimer = 0;
-            }
+            if (this.onHistory)
+                this.onHistory(archives); 
 
+            this.restartLoop();
+
+        },err=> {
+            Logger.error('getArchives', err);
+            this.restartLoop();
         }); 
     }     
 
-    getHiLows() {
-        
+    getHiLows(callback) {
+
         this.station.isAvailable().then(()=> {
 
-            this.station.wakeUp().then(result => {
-                this.pauseLoop = true;
+            this.station.wakeUp().then(result => {                
 
-                this.station.getData("HILOWS", 438, true).then(data => {              
-                    this.pauseLoop = false;
-                    this.loopCount = 0;
+                this.station.getSerial("HILOWS", 438, true).then(data => {                   
 
                     if (VPDevice.validateCRC(data)) {
                         this.hilows = new VPHiLow(data);
@@ -140,18 +162,18 @@ export default class VantageWs {
                         if (this.onHighLow)
                             this.onHighLow(this.hilows);
 
-                        this.getForeCast();
-                       
+                        this.getForecast();                      
 
-                        console.log('hi temp:' + this.hilows.temperature.dailyHi);
+                        Logger.info('hi temp:' + this.hilows.temperature.dailyHi);
+                        callback(this.hilows);
 
                     }
 
-                }, () => { this.pauseLoop = false; });
+                }, (err) => { Logger.error(err); callback('error')});
             });          
 
         }, err => {
-            console.log('hilows device not available');           
+            Logger.error('hilows device not available'); callback('error');           
         });
 
       
@@ -160,11 +182,11 @@ export default class VantageWs {
 
 
     static deviceError(err) {
-        console.log(err);
+        Logger.error(err);
     }
        
 
-    getForeCast(): any {      
+    getForecast(): any {      
         var last;          
       
         if (this.forecast) {
@@ -172,7 +194,7 @@ export default class VantageWs {
         }
 
         if (!last || last >= 4) {
-            this.wu.getForeCast().then(forecast => {
+            this.wu.getForecast().then(forecast => {
                 this.forecast = forecast;
                 this.hilows.forecast = forecast;                
             });            
@@ -197,14 +219,49 @@ export default class VantageWs {
         }, 60000 * 15);
     }
 
+    stopLoop(pauseSecs) {
+        if (this.loopTimer > 0) {
+            clearInterval(this.loopTimer);
+            this.loopTimer = 0;
+        }
+
+        this.pauseTimer = setTimeout(() => {
+            this.pauseTimer = 0;
+            this.startLoop(); 
+        }, pauseSecs * 1000);
+    }
+
+    restartLoop() {
+        if (this.pauseTimer)
+            clearTimeout(this.pauseTimer);
+
+        if (this.loopTimer)
+            clearInterval(this.loopTimer);
+
+        this.startLoop();
+    }    
+
+    sendCommand(cmd, callback) {
+        this.stopLoop(5);
+
+        this.station.isAvailable().then(() => {
+           
+            this.station.wakeUp().then(result => {                
+
+                this.station.getSerial(cmd + '\n', 1, false).then(data => {
+                    this.restartLoop();
+                    var result='';
+                    for (var i in data) {
+                        result += String.fromCharCode(data[i]);
+                    }
+                    callback(result);
+                }, err => {
+                    this.restartLoop();
+                });
+            });
+        })
+    }
+
 }
 
-
-        //rl.on('line', (input) => {
-        //console.log(`Received: ${input}` + input.length);
-        //  if (input.length == 0)
-        //	myPort.write('\n'); 
-        //  else
-        //	myPort.write(input); 
-        //});
-
+ 
