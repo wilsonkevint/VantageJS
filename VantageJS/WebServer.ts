@@ -66,12 +66,12 @@ export default class WebServer {
             var args = req.url.split('='); 
             var startDt = null;
             if (args.length > 1)
-                startDt = args[1]; 
-            this.ws.getArchives(startDt);
-            this.ws.onHistory = history => {
+                startDt = decodeURI(args[1]); 
+            this.ws.getArchivesDB(startDt).then(archives => {
                 res.writeHead(200, { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': allowOrigins });
-                res.end(JSON.stringify(history));
-            }        
+                res.end(JSON.stringify(archives));
+            });
+                
         }
         else if (req.url.indexOf('archiveint') > -1) {
             var interval = req.url.split('=');
@@ -147,7 +147,7 @@ export default class WebServer {
 
        	    socket.on('message',
                 (msgtype,msg) => {				 
-                    io.sockets.emit('alert', msg);
+                    this.io.sockets.emit('alert', msg);
                 });
 
         });

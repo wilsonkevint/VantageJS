@@ -213,6 +213,10 @@
 
             Logger.info('archive retrieving ' + pgCount + ' pages');
             this.port.write([6]);       //acknowledge- start download
+            if (pgCount == 0) {
+                callback(archives);
+                return;
+            }
 
             this.dataReceived = (data: any) => {
                 if (received.length < 267)

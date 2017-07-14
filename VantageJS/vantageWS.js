@@ -1,5 +1,9 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
+var moment = require('moment');
+var http = require('http');
+var os = require('os');
+var linq = require('linq');
 const VPDevice_1 = require("./VPDevice");
 const VPCurrent_1 = require("./VPCurrent");
 const VPHiLow_1 = require("./VPHiLow");
@@ -7,19 +11,15 @@ const VPBase_1 = require("./VPBase");
 const Wunderground_1 = require("./Wunderground");
 const Common_1 = require("./Common");
 const MongoDB_1 = require("./MongoDB");
-var moment = require('moment');
-var http = require('http');
-var os = require('os');
-var linq = require('linq');
 class VantageWs {
     constructor(comPort, config) {
-        this.station = new VPDevice_1.default(comPort);
+        this.device = new VPDevice_1.default(comPort);
         var updateFreqMs = config.updateFrequency * 1000;
         this.config = config;
         this.wu = new Wunderground_1.default(config);
         this.getAlerts();
-        this.station.onOpen = () => {
-            this.startLoop();
+        this.device.onOpen = () => {
+            this.start();
         };
         var mongo = new MongoDB_1.default(config);
         mongo.connect().then(() => {
@@ -27,37 +27,28 @@ class VantageWs {
             Common_1.default.info('database connected');
         });
     }
-    startLoop() {
-        this.loopCount = 0;
-        console.log('start loop ' + Date());
+    start() {
+        this.hourlyUpdate();
         this.loopTimer = setInterval(() => {
-            if (this.loopCount <= 0) {
-                this.getHiLows(() => {
-                    this.loopCount = 99;
-                    if (this.current) {
-                        console.log('temp:' + this.current.temperature);
-                    }
-                    this.beginLoop();
-                });
+            var last = null;
+            if (this.current) {
+                last = VPBase_1.default.timeDiff(this.current.dateLoaded, 's');
             }
-            else {
-                var last = null;
-                if (this.current)
-                    last = VPBase_1.default.timeDiff(this.current.dateLoaded, 's');
-                if (last && last > 5) {
-                    Common_1.default.warn('last current loaded at ' + this.current.dateLoaded);
-                    Common_1.default.warn('restarting loop');
-                    this.loopCount = 0;
-                }
+            if (this.pauseTimer == null && (last == null || last > 5)) {
+                this.beginLoop();
+            }
+            if (this.current) {
+                console.log('temp:' + this.current.temperature + ' ' + this.current.dateLoaded);
             }
         }, 2000);
+        this.hourlyTimer = setInterval(() => {
+            this.hourlyUpdate();
+        }, 60 * 60 * 1000);
     }
     beginLoop() {
-        //console.log('beginLoop ' + Date());
-        this.station.isAvailable().then(() => {
-            this.station.wakeUp().then(result => {
-                this.station.readLoop(this.loopCount, data => {
-                    this.loopCount--;
+        this.device.isAvailable().then(() => {
+            this.device.wakeUp().then(result => {
+                this.device.readLoop(99, data => {
                     if (VPDevice_1.default.validateCRC(data)) {
                         this.current = new VPCurrent_1.default(data);
                         this.wu.upload(this.current);
@@ -68,41 +59,84 @@ class VantageWs {
             }, VantageWs.deviceError);
         }, VantageWs.deviceError);
     }
+    hourlyUpdate() {
+        this.pauseLoop(60);
+        this.getHiLows(() => {
+            this.updateArchives().then(() => {
+                this.pauseLoop(0);
+            }, err => {
+                this.pauseLoop(0);
+            });
+        });
+    }
+    archiveGroupBy(archives) {
+        var hiTemp = linq.from(archives).groupBy('$.archiveDate', '$.outTemp', this.queryArchives);
+        hiTemp.forEach(t => {
+            console.log(t);
+        });
+    }
     queryArchives(key, group) {
         return {
             date: key, min: group.min(), max: group.max(), count: group.count()
         };
     }
-    getArchives(startDate) {
-        if (startDate)
-            startDate = moment(startDate, "MM/DD/YYYY").format("MM/DD/YYYY");
-        this.stopLoop(120);
-        this.station.getArchived(startDate).then(archives => {
-            var lowTemp;
-            var hiTemp = linq.from(archives).groupBy('$.archiveDate', '$.outTemp', this.queryArchives);
-            hiTemp.forEach(t => {
-                console.log(t);
-            });
-            try {
-                this.db.collection('archive').insertMany(archives).then(res => {
-                    console.log('inserted ' + res.insertedCount);
+    updateArchives() {
+        var promise = new Promise((resolve, reject) => {
+            this.db.collection('archive').find().sort({ "_id": -1 }).limit(1).next().then((max) => {
+                var maxId = max._id;
+                var maxDtTime = max.archiveDate + ' ' + max.archiveTime;
+                this.retrieveArchives(maxDtTime).then((archives) => {
+                    try {
+                        archives.forEach((a) => {
+                            a._id = moment(a.archiveDate + ' ' + a.archiveTime, 'MM/DD/YYYY HH:mm').unix();
+                            if (a._id > maxId) {
+                                this.db.collection('archive').insert(a).then(res => {
+                                    console.log('inserted ' + a.archiveDate + ' ' + a.archiveTime);
+                                });
+                            }
+                        });
+                        resolve();
+                    }
+                    catch (e) {
+                        this.errorHandler(e);
+                        reject(e);
+                    }
+                }, err => {
+                    reject(err);
                 });
-            }
-            catch (e) {
-                Common_1.default.error(e);
-            }
-            if (this.onHistory)
-                this.onHistory(archives);
-            this.restartLoop();
-        }, err => {
-            Common_1.default.error('getArchives', err);
-            this.restartLoop();
+            }, err => {
+                reject(err);
+            });
         });
+        return promise;
+    }
+    errorHandler(err) {
+        Common_1.default.error(err);
+    }
+    getArchivesDB(startDate) {
+        var dt = moment(startDate, 'MM/DD/YYYY HH:mm').unix();
+        var promise = new Promise((resolve, reject) => {
+            this.db.collection('archive').find({ "_id": { $gte: dt } }).toArray().then(res => {
+                resolve(res);
+            });
+        });
+        return promise;
+    }
+    retrieveArchives(startDate) {
+        var promise = new Promise((resolve, reject) => {
+            this.device.getArchived(startDate).then((archives) => {
+                resolve(archives);
+            }, err => {
+                Common_1.default.error('getArchives', err);
+                reject(err);
+            });
+        });
+        return promise;
     }
     getHiLows(callback) {
-        this.station.isAvailable().then(() => {
-            this.station.wakeUp().then(result => {
-                this.station.getSerial("HILOWS", 438, true).then(data => {
+        this.device.isAvailable().then(() => {
+            this.device.wakeUp().then(result => {
+                this.device.getSerial("HILOWS", 438, true).then(data => {
                     if (VPDevice_1.default.validateCRC(data)) {
                         this.hilows = new VPHiLow_1.default(data);
                         this.hilows.dateLoaded = moment().format('YYYY-MM-DD hh:mm:ss');
@@ -148,36 +182,27 @@ class VantageWs {
             doalerts();
         }, 60000 * 15);
     }
-    stopLoop(pauseSecs) {
-        if (this.loopTimer > 0) {
-            clearInterval(this.loopTimer);
-            this.loopTimer = 0;
+    pauseLoop(pauseSecs) {
+        if (pauseSecs == 0 && this.pauseTimer) {
+            clearTimeout(this.pauseTimer);
+            this.pauseTimer = null;
+            return;
         }
         this.pauseTimer = setTimeout(() => {
-            this.pauseTimer = 0;
-            this.startLoop();
+            this.pauseTimer = null;
         }, pauseSecs * 1000);
     }
-    restartLoop() {
-        if (this.pauseTimer)
-            clearTimeout(this.pauseTimer);
-        if (this.loopTimer)
-            clearInterval(this.loopTimer);
-        this.startLoop();
-    }
     sendCommand(cmd, callback) {
-        this.stopLoop(5);
-        this.station.isAvailable().then(() => {
-            this.station.wakeUp().then(result => {
-                this.station.getSerial(cmd + '\n', 1, false).then(data => {
-                    this.restartLoop();
+        this.pauseLoop(5);
+        this.device.isAvailable().then(() => {
+            this.device.wakeUp().then(result => {
+                this.device.getSerial(cmd + '\n', 1, false).then(data => {
                     var result = '';
                     for (var i in data) {
                         result += String.fromCharCode(data[i]);
                     }
                     callback(result);
                 }, err => {
-                    this.restartLoop();
                 });
             });
         });

@@ -55,6 +55,7 @@ export default class VPArchive extends VPBase {
     prevWindDir: number;
     avgUvIndex: number;
     et: number;
+    _id: number;
 
 
 }

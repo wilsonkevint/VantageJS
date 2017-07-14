@@ -163,6 +163,10 @@ class VPDevice {
         firstRecord = base.nextDecimal();
         Common_1.default.info('archive retrieving ' + pgCount + ' pages');
         this.port.write([6]); //acknowledge- start download
+        if (pgCount == 0) {
+            callback(archives);
+            return;
+        }
         this.dataReceived = (data) => {
             if (received.length < 267)
                 received.push.apply(received, data);

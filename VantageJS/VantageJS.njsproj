@@ -56,7 +56,6 @@
     <TypeScriptCompile Include="Common.ts">
       <SubType>Code</SubType>
     </TypeScriptCompile>
-    <TypeScriptCompile Include="expressServer.ts" />
     <TypeScriptCompile Include="MongoDB.ts">
       <SubType>Code</SubType>
     </TypeScriptCompile>
