@@ -23,25 +23,14 @@ class MongoDB {
         });
         return promise;
     }
+    find(name, criteria) {
+        return this.db.collection(name).find({ "_id": criteria });
+    }
     insert(name, obj) {
-        var promise = new Promise((resolve, reject) => {
-            try {
-                var collection = this.db.collection(name);
-                collection.insert(obj, (err, result) => {
-                    if (err) {
-                        reject(err);
-                    }
-                    else {
-                        resolve(result.ops[0]);
-                    }
-                });
-            }
-            catch (e) {
-                Common_1.default.error(e);
-                reject(e);
-            }
-        });
-        return promise;
+        return this.db.collection(name).insert(obj);
+    }
+    getLast(name) {
+        return this.db.collection(name).find().sort({ "_id": -1 }).limit(1).next();
     }
 }
 exports.default = MongoDB;

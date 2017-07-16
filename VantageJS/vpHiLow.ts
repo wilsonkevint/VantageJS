@@ -40,7 +40,7 @@ export default class VPHiLow extends VPBase {
     uvHigh: HiLow;
     rainHigh: HiLow;
     humidity: HiLow;
-    dateLoaded: string;
+    dateLoaded: Date;
     forecast: any;
 
     fBarometerHL(): HiLow {

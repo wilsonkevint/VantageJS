@@ -27,25 +27,15 @@ export default class MongoDB {
         return promise;
     }
 
-    insert(name,obj) {
-        var promise = new Promise((resolve, reject) => {
-            try {          
-                var collection = this.db.collection(name);
+    find(name, criteria) {
+        return this.db.collection(name).find({ "_id": criteria });
+    }
 
-                collection.insert(obj , (err,result)=> {
-                    if (err) {
-                        reject(err);
-                    }
-                    else {
-                        resolve(result.ops[0]);
-                    }
-                });
-            }
-            catch(e) {
-                Logger.error(e);
-                reject(e);
-            }
-        });
-        return promise;
+    insert(name,obj) {
+        return this.db.collection(name).insert(obj);
+    }
+
+    getLast(name): any {
+        return this.db.collection(name).find().sort({ "_id": -1 }).limit(1).next();
     }
 }

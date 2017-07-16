@@ -9,6 +9,7 @@
   },
   "dependencies": {
     "body-parser": "^1.17.2",
+    "events": "^1.1.1",
     "express": "^4.15.3",
     "linq": "^3.0.8",
     "mail": "^0.2.3",

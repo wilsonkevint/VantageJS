@@ -22,6 +22,16 @@ export default class WebServer {
         this.io = require('socket.io')(this.server);        
         this.server.listen(this.config.webPort);
         this.webSocket();
+
+        this.ws.onCurrent(current => {
+            this.emit('current', current);
+        });
+        this.ws.onHighLow(hilows => {
+            this.emit('hilows', hilows);
+        });
+        this.ws.onAlert(alerts => {
+            this.emit('alerts', alerts);
+        });
     }
 
     requestReceived (req, res) {       
@@ -175,7 +185,7 @@ export default class WebServer {
                 token += chunk;
             })
             resp.on('end', () => {
-                var socket = io('http://rpizero:9002');
+                var socket = this.io('http://rpizero:9002');
 
                 socket.on('connect', () => {
                     Logger.info('connected');
@@ -184,7 +194,7 @@ export default class WebServer {
                         .on('authenticated', () => {
                             Logger.info('authenticated');
                             socket.on('current', (x) => {
-                                socket.emit('oncurrent', ws.current);
+                                socket.emit('oncurrent', this.ws.current);
                             });
                         })
                         .on('unauthorized', (msg) => {

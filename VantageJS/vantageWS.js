@@ -11,61 +11,63 @@ const VPBase_1 = require("./VPBase");
 const Wunderground_1 = require("./Wunderground");
 const Common_1 = require("./Common");
 const MongoDB_1 = require("./MongoDB");
+const events_1 = require("events");
 class VantageWs {
     constructor(comPort, config) {
         this.device = new VPDevice_1.default(comPort);
         var updateFreqMs = config.updateFrequency * 1000;
         this.config = config;
         this.wu = new Wunderground_1.default(config);
+        this.eventEmitter = new events_1.EventEmitter();
         this.getAlerts();
         this.device.onOpen = () => {
+            this.isActive = true;
             this.start();
         };
-        var mongo = new MongoDB_1.default(config);
-        mongo.connect().then(() => {
-            this.db = mongo.db;
+        this.mongo = new MongoDB_1.default(config);
+        this.mongo.connect().then(() => {
             Common_1.default.info('database connected');
         });
     }
     start() {
-        this.hourlyUpdate();
         this.loopTimer = setInterval(() => {
-            var last = null;
-            if (this.current) {
-                last = VPBase_1.default.timeDiff(this.current.dateLoaded, 's');
+            var lastHiLow = null;
+            if (this.hilows) {
+                lastHiLow = VPBase_1.default.timeDiff(this.hilows.dateLoaded, 's');
             }
-            if (this.pauseTimer == null && (last == null || last > 5)) {
-                this.beginLoop();
+            if (!this.pauseTimer) {
+                if (lastHiLow == null || lastHiLow >= 300) {
+                    this.pause(30, null);
+                    this.hiLowArchive();
+                }
+                else {
+                    this.startLoop();
+                }
             }
-            if (this.current) {
+            if (this.current && this.config.debug) {
                 console.log('temp:' + this.current.temperature + ' ' + this.current.dateLoaded);
             }
-        }, 2000);
-        this.hourlyTimer = setInterval(() => {
-            this.hourlyUpdate();
-        }, 60 * 60 * 1000);
+        }, this.config.updateFrequency * 1000);
     }
-    beginLoop() {
+    startLoop() {
         this.device.isAvailable().then(() => {
             this.device.wakeUp().then(result => {
-                this.device.readLoop(99, data => {
+                this.device.readLoop(1, data => {
                     if (VPDevice_1.default.validateCRC(data)) {
                         this.current = new VPCurrent_1.default(data);
                         this.wu.upload(this.current);
-                        if (this.onCurrent)
-                            this.onCurrent(this.current);
+                        this.emit('current', this.current);
                     }
                 });
             }, VantageWs.deviceError);
         }, VantageWs.deviceError);
     }
-    hourlyUpdate() {
-        this.pauseLoop(60);
+    hiLowArchive() {
         this.getHiLows(() => {
             this.updateArchives().then(() => {
-                this.pauseLoop(0);
+                this.clearPause();
             }, err => {
-                this.pauseLoop(0);
+                this.clearPause();
             });
         });
     }
@@ -82,15 +84,14 @@ class VantageWs {
     }
     updateArchives() {
         var promise = new Promise((resolve, reject) => {
-            this.db.collection('archive').find().sort({ "_id": -1 }).limit(1).next().then((max) => {
-                var maxId = max._id;
-                var maxDtTime = max.archiveDate + ' ' + max.archiveTime;
-                this.retrieveArchives(maxDtTime).then((archives) => {
+            this.mongo.getLast('archive').then((last) => {
+                var lastDt = last.archiveDate + ' ' + last.archiveTime;
+                this.retrieveArchives(lastDt).then((archives) => {
                     try {
                         archives.forEach((a) => {
                             a._id = moment(a.archiveDate + ' ' + a.archiveTime, 'MM/DD/YYYY HH:mm').unix();
-                            if (a._id > maxId) {
-                                this.db.collection('archive').insert(a).then(res => {
+                            if (a._id > last._id) {
+                                this.mongo.insert('archive', a).then(res => {
                                     console.log('inserted ' + a.archiveDate + ' ' + a.archiveTime);
                                 });
                             }
@@ -116,7 +117,7 @@ class VantageWs {
     getArchivesDB(startDate) {
         var dt = moment(startDate, 'MM/DD/YYYY HH:mm').unix();
         var promise = new Promise((resolve, reject) => {
-            this.db.collection('archive').find({ "_id": { $gte: dt } }).toArray().then(res => {
+            this.mongo.find('archive', { $gte: dt }).toArray().then(res => {
                 resolve(res);
             });
         });
@@ -139,10 +140,12 @@ class VantageWs {
                 this.device.getSerial("HILOWS", 438, true).then(data => {
                     if (VPDevice_1.default.validateCRC(data)) {
                         this.hilows = new VPHiLow_1.default(data);
-                        this.hilows.dateLoaded = moment().format('YYYY-MM-DD hh:mm:ss');
-                        if (this.onHighLow)
-                            this.onHighLow(this.hilows);
-                        this.getForecast();
+                        this.hilows.dateLoaded = new Date();
+                        this.getForecast().then(forecast => {
+                            this.forecast = forecast;
+                            this.hilows.forecast = this.forecast;
+                            this.emit('hilows', this.hilows);
+                        });
                         Common_1.default.info('hi temp:' + this.hilows.temperature.dailyHi);
                         callback(this.hilows);
                     }
@@ -158,15 +161,17 @@ class VantageWs {
     }
     getForecast() {
         var last;
+        var promise;
         if (this.forecast) {
             last = VPBase_1.default.timeDiff(this.forecast.last, 'h');
         }
         if (!last || last >= 4) {
-            this.wu.getForecast().then(forecast => {
-                this.forecast = forecast;
-                this.hilows.forecast = forecast;
-            });
+            promise = this.wu.getForecast();
         }
+        else {
+            promise = Promise.resolve(this.forecast);
+        }
+        return promise;
     }
     getAlerts() {
         var doalerts = () => {
@@ -182,30 +187,50 @@ class VantageWs {
             doalerts();
         }, 60000 * 15);
     }
-    pauseLoop(pauseSecs) {
-        if (pauseSecs == 0 && this.pauseTimer) {
-            clearTimeout(this.pauseTimer);
-            this.pauseTimer = null;
-            return;
-        }
-        this.pauseTimer = setTimeout(() => {
-            this.pauseTimer = null;
-        }, pauseSecs * 1000);
-    }
     sendCommand(cmd, callback) {
-        this.pauseLoop(5);
-        this.device.isAvailable().then(() => {
-            this.device.wakeUp().then(result => {
-                this.device.getSerial(cmd + '\n', 1, false).then(data => {
-                    var result = '';
-                    for (var i in data) {
-                        result += String.fromCharCode(data[i]);
-                    }
-                    callback(result);
-                }, err => {
+        this.pause(2, () => {
+            this.device.isAvailable().then(() => {
+                this.device.wakeUp().then(result => {
+                    this.device.getSerial(cmd + '\n', 1, false).then(data => {
+                        var result = '';
+                        for (var i in data) {
+                            result += String.fromCharCode(data[i]);
+                        }
+                        callback(result);
+                    }, err => {
+                    });
                 });
             });
         });
+    }
+    pause(secs, cb) {
+        this.pauseTimer = secs;
+        setTimeout(() => {
+            this.pauseTimer = 0;
+            if (cb)
+                cb();
+        }, secs * 1000);
+    }
+    clearPause() {
+        if (this.pauseTimer) {
+            clearTimeout(this.pauseTimer);
+            this.pauseTimer = 0;
+        }
+    }
+    emit(name, obj) {
+        this.eventEmitter.emit(name, obj);
+    }
+    onCurrent(listener) {
+        this.eventEmitter.on('current', listener);
+    }
+    onHighLow(listener) {
+        this.eventEmitter.on('hilows', listener);
+    }
+    onAlert(listener) {
+        this.eventEmitter.on('alert', listener);
+    }
+    onHistory(listener) {
+        this.eventEmitter.on('history', listener);
     }
 }
 exports.default = VantageWs;
