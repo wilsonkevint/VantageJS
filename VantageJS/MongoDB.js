@@ -1,7 +1,7 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 var MongoClient = require('mongodb').MongoClient;
-const Common_1 = require("./Common");
+const Common = require("./Common");
 class MongoDB {
     constructor(config) {
         this.config = config;
@@ -11,12 +11,12 @@ class MongoDB {
         var promise = new Promise((resolve, reject) => {
             MongoClient.connect(url, (err, db) => {
                 if (!err) {
-                    console.log("Connected successfully to server");
+                    console.log("Connected successfully to mongodb");
                     this.db = db;
                     resolve();
                 }
                 else {
-                    Common_1.default.error(err);
+                    Common.Logger.error(err);
                     reject(err);
                 }
             });
@@ -29,8 +29,24 @@ class MongoDB {
     insert(name, obj) {
         return this.db.collection(name).insert(obj);
     }
+    sum(name, fld, criteria, fn) {
+        return this.db.collection(name).aggregate([
+            { $match: criteria },
+            {
+                $group: {
+                    _id: '',
+                    total: {
+                        $sum: "$rainClicks"
+                    }
+                }
+            }
+        ], fn);
+    }
     getLast(name) {
         return this.db.collection(name).find().sort({ "_id": -1 }).limit(1).next();
+    }
+    getLastRecs(name, recs) {
+        return this.db.collection(name).find().sort({ "_id": -1 }).limit(recs);
     }
 }
 exports.default = MongoDB;

@@ -2,7 +2,7 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 const VPBase_1 = require("./VPBase");
 const VPArchive_1 = require("./VPArchive");
-const Common_1 = require("./Common");
+const Common = require("./Common");
 var process = require('process');
 var moment = require('moment');
 var SerialPort = require("serialport");
@@ -20,20 +20,20 @@ class VPDevice {
             });
         }
         catch (e) {
-            Common_1.default.error('VPDevice:' + e);
+            Common.Logger.error('VPDevice:' + e);
             process.exit(-1);
         }
         this.port.on('open', data => {
             if (this.onOpen)
                 this.onOpen();
-            Common_1.default.info('comport open');
+            Common.Logger.info('comport open');
         });
         this.port.on('close', () => {
-            Common_1.default.info('comport closed');
+            Common.Logger.info('comport closed');
         });
         this.port.on('error', err => {
             this.errorReceived(err);
-            Common_1.default.error(err.message);
+            Common.Logger.error(err.message);
             process.exit(-1);
         });
         this.port.on('data', (data) => {
@@ -116,7 +116,7 @@ class VPDevice {
                         });
                     }, err => {
                         reject();
-                        Common_1.default.error('getArchived error');
+                        Common.Logger.error('getArchived error');
                     });
                 }
                 else {
@@ -131,7 +131,7 @@ class VPDevice {
     sendArchiveCmd(cmd) {
         return new Promise((resolve, reject) => {
             var rj = err => {
-                Common_1.default.error(err);
+                Common.Logger.error(err);
                 reject(err);
             };
             this.isAvailable().then(() => {
@@ -161,7 +161,7 @@ class VPDevice {
         pgCount = base.nextDecimal();
         pgCount = allPages ? 511 : pgCount;
         firstRecord = base.nextDecimal();
-        Common_1.default.info('archive retrieving ' + pgCount + ' pages');
+        Common.Logger.info('archive retrieving ' + pgCount + ' pages');
         this.port.write([6]); //acknowledge- start download
         if (pgCount == 0) {
             callback(archives);
@@ -184,7 +184,7 @@ class VPDevice {
                         dataIndx += 52;
                     }
                     received = [];
-                    Common_1.default.info('retrieved page ' + pgIndex + ' of ' + pgCount);
+                    Common.Logger.info('retrieved page ' + pgIndex + ' of ' + pgCount);
                     if (pgIndex == pgCount) {
                         callback(archives);
                     }

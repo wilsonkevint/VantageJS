@@ -2,7 +2,7 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 var http = require('http');
 var moment = require('moment');
-const Common_1 = require("./Common");
+const Common = require("./Common");
 class WebServer {
     constructor(config, ws) {
         this.config = config;
@@ -25,7 +25,7 @@ class WebServer {
         });
     }
     requestReceived(req, res) {
-        Common_1.default.info('WebRequest ' + moment().format('hh:mm:ss'));
+        Common.Logger.info('WebRequest ' + moment().format('hh:mm:ss'));
         var allowOrigins = this.config.allowOrigins[0];
         var origin = req.headers.origin;
         var allowOrigin = this.config.allowOrigins.filter(o => {
@@ -36,7 +36,7 @@ class WebServer {
         });
         if (allowOrigin.length)
             allowOrigins = allowOrigin[0];
-        Common_1.default.info(allowOrigins);
+        Common.Logger.info(allowOrigins);
         if (req.url == '/hilows') {
             if (this.ws.hilows) {
                 res.writeHead(200, { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': allowOrigins });
@@ -102,6 +102,17 @@ class WebServer {
                 res.end("error");
             }
         }
+        else if (req.url == '/phone') {
+            var body = '';
+            req.on('data', data => {
+                body += data;
+            });
+            req.on('end', () => {
+                var msg = JSON.parse(body);
+                msg.source = 'phone';
+                this.emit('alert', msg);
+            });
+        }
         else {
             if (this.ws.current) {
                 res.writeHead(200, { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': allowOrigins });
@@ -115,8 +126,8 @@ class WebServer {
     }
     webSocket() {
         this.io.on('connection', (socket) => {
-            Common_1.default.info('socket connection from:' + socket.request.connection.remoteAddress);
-            //Logger.info(socket.request.headers);
+            Common.Logger.info('socket connection from:' + socket.request.connection.remoteAddress);
+            //Common.Logger.info(socket.request.headers);
             if (this.ws.current)
                 socket.emit('current', JSON.stringify(this.ws.current));
             if (this.ws.hilows)
@@ -124,11 +135,11 @@ class WebServer {
             if (this.ws.alerts)
                 socket.emit('alerts', JSON.stringify(this.ws.alerts));
             socket.on('hilows', (data) => {
-                Common_1.default.info('hilows req');
+                Common.Logger.info('hilows req');
                 socket.emit('hilows', JSON.stringify(this.ws.hilows));
             });
             socket.on('message', (msgtype, msg) => {
-                this.io.sockets.emit('alert', msg);
+                this.io.sockets.emit('message', msg);
             });
         });
     }
@@ -154,17 +165,17 @@ class WebServer {
             resp.on('end', () => {
                 var socket = this.io('http://rpizero:9002');
                 socket.on('connect', () => {
-                    Common_1.default.info('connected');
+                    Common.Logger.info('connected');
                     socket
                         .emit('authenticate', { token: token })
                         .on('authenticated', () => {
-                        Common_1.default.info('authenticated');
+                        Common.Logger.info('authenticated');
                         socket.on('current', (x) => {
                             socket.emit('oncurrent', this.ws.current);
                         });
                     })
                         .on('unauthorized', (msg) => {
-                        Common_1.default.info("unauthorized: " + JSON.stringify(msg.data));
+                        Common.Logger.info("unauthorized: " + JSON.stringify(msg.data));
                     });
                 });
             });

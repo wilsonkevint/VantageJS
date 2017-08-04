@@ -58,6 +58,12 @@
     <TypeScriptCompile Include="Common.ts">
       <SubType>Code</SubType>
     </TypeScriptCompile>
+    <TypeScriptCompile Include="CWOP.ts">
+      <SubType>Code</SubType>
+    </TypeScriptCompile>
+    <TypeScriptCompile Include="cwoptest.ts">
+      <SubType>Code</SubType>
+    </TypeScriptCompile>
     <TypeScriptCompile Include="MongoDB.ts">
       <SubType>Code</SubType>
     </TypeScriptCompile>

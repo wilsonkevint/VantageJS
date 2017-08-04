@@ -12,7 +12,7 @@ import VPArchive from './vpArchive';
 import WebRequest from './WebRequest';
 import Wunderground from './Wunderground';
 import WeatherAlert from './WeatherAlert';
-import Logger from './Common';
+import * as Common from './Common';
 import MongoDB from './MongoDB';
 import { EventEmitter } from 'events';
 
@@ -47,7 +47,7 @@ export default class VantageWs  {
 
         this.mongo = new MongoDB(config);
         this.mongo.connect().then(() => {            
-            Logger.info('database connected');
+            Common.Logger.info('database connected');
         })        
      
     }
@@ -63,7 +63,7 @@ export default class VantageWs  {
 
             if (!this.pauseTimer) {
                 if (lastHiLow == null || lastHiLow >= 300) {      
-                    this.pause(30, null);
+                    this.pause(180, null);
                     this.hiLowArchive();
                 }
                 else {                    
@@ -124,16 +124,21 @@ export default class VantageWs  {
 
     updateArchives() {      
         var promise = new Promise((resolve, reject) => {
-            this.mongo.getLast('archive').then((last: VPArchive) => {               
-                var lastDt = last.archiveDate + ' ' + last.archiveTime;
+            this.mongo.getLast('archive').then((last: VPArchive) => { 
+                var lastDt = last ? last.archiveDate + ' ' + last.archiveTime : null;
+                var lastId = last ? last._id : 0;
 
                 this.retrieveArchives(lastDt).then((archives: Array<VPArchive>) => {
                     try {
+                         
                         archives.forEach((a: VPArchive) => {
                             a._id = moment(a.archiveDate + ' ' + a.archiveTime, 'MM/DD/YYYY HH:mm').unix();
-                            if (a._id > last._id) {
+                            if (a._id > lastId) {
                                 this.mongo.insert('archive',a).then(res => {
                                     console.log('inserted ' + a.archiveDate + ' ' + a.archiveTime);
+                                }, err => {
+                                    this.errorHandler(err);
+                                    reject(err);
                                 });
                             }
                         });
@@ -156,7 +161,7 @@ export default class VantageWs  {
     }
 
     errorHandler(err) {
-        Logger.error(err);
+        Common.Logger.error(err);
     }
 
     getArchivesDB(startDate) {
@@ -176,7 +181,7 @@ export default class VantageWs  {
             this.device.getArchived(startDate).then((archives: Array<VPArchive>) => {             
                 resolve(archives);
             }, err => {
-                Logger.error('getArchives', err);
+                Common.Logger.error('getArchives', err);
                 reject(err);
             });
         });
@@ -203,21 +208,21 @@ export default class VantageWs  {
                         });                       
                        
 
-                        Logger.info('hi temp:' + this.hilows.temperature.dailyHi);
+                        Common.Logger.info('hi temp:' + this.hilows.temperature.dailyHi);
                         callback(this.hilows);
 
                     }
 
-                }, (err) => { Logger.error(err); callback('error')});
+                }, (err) => { Common.Logger.error(err); callback('error')});
             });          
 
         }, err => {
-            Logger.error('hilows device not available'); callback('error');           
+            Common.Logger.error('hilows device not available'); callback('error');           
         });
     }
 
     static deviceError(err) {
-        Logger.error(err);
+        Common.Logger.error(err);
     }      
 
     getForecast(): any {      
@@ -254,6 +259,15 @@ export default class VantageWs  {
         setInterval(() => {
             doalerts();
         }, 60000 * 15);
+    }
+
+    getHourlyRain() {
+        var csr = this.mongo.getLastRecs('archives',15);
+        this.current.hourlyRain = 0; 
+
+        csr.forEach(rec=> {
+            this.current.hourlyRain += rec.rainClicks;
+        });
     }
      
     sendCommand(cmd, callback) {

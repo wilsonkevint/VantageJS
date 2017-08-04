@@ -1,6 +1,6 @@
 ﻿declare function require(name: string); 
 var MongoClient = require('mongodb').MongoClient;
-import Logger from './Common';
+import * as Common from './Common';
 
 export default class MongoDB {
     config:any;    
@@ -14,12 +14,12 @@ export default class MongoDB {
         var promise = new Promise((resolve, reject) => {
             MongoClient.connect(url, (err, db) => {    
                 if (!err) {
-                    console.log("Connected successfully to server");
+                    console.log("Connected successfully to mongodb");
                     this.db = db;     
                     resolve();          
                 }
                 else {
-                    Logger.error(err);
+                    Common.Logger.error(err);
                     reject(err);
                 }
             });
@@ -35,7 +35,25 @@ export default class MongoDB {
         return this.db.collection(name).insert(obj);
     }
 
+    sum(name, fld, criteria, fn) {
+        return this.db.collection(name).aggregate([
+            {$match: criteria},
+            {      
+                $group: {
+                    _id: '',
+                    total: {
+                        $sum: "$rainClicks"
+                    }
+                }
+            }
+        ],fn)
+    }
+
     getLast(name): any {
         return this.db.collection(name).find().sort({ "_id": -1 }).limit(1).next();
+    }
+
+    getLastRecs(name, recs): any {
+        return this.db.collection(name).find().sort({ "_id": -1 }).limit(recs);
     }
 }

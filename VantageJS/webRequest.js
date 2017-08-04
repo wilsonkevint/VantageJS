@@ -1,16 +1,26 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-const Common_1 = require("./Common");
+const Common = require("./Common");
 var http = require('http');
 class WebRequest {
     static get(host, path) {
+        var port = 80;
         if (!path) {
-            path = host.substr(host.indexOf('/') - 1 + 1);
-            host = host.substr(0, host.indexOf('/'));
+            if (host.indexOf('/') > -1) {
+                path = host.substr(host.indexOf('/') - 1 + 1);
+                host = host.substr(0, host.indexOf('/'));
+            }
+            else
+                path = '/';
+            if (host.indexOf(':') > -1) {
+                var parms = host.split(':');
+                host = parms[0];
+                port = parseInt(parms[1]);
+            }
         }
         var options = {
             host: host,
-            port: 80,
+            port: port,
             path: path,
             method: 'get',
             timeout: 4000
@@ -21,7 +31,7 @@ class WebRequest {
                 var request = http.request(options, function (response) {
                     response.on('data', function (chunk, len) {
                         resultData += String.fromCharCode.apply(null, chunk);
-                        if (resultData.length == this.headers['content-length'])
+                        if (resultData.length == this.headers['content-length'] || !this.headers['content-length'])
                             resolve(resultData);
                     });
                     response.on('timeout', function (socket) {
@@ -40,8 +50,8 @@ class WebRequest {
                 request.end();
             }
             catch (ex) {
-                Common_1.default.info('getWebRequest exception');
-                Common_1.default.info(ex);
+                Common.Logger.info('getWebRequest exception');
+                Common.Logger.info(ex);
                 reject(ex);
             }
         });

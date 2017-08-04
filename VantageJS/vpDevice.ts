@@ -1,7 +1,7 @@
 ﻿    declare function require(name: string);
     import VPBase from './VPBase';
     import VPArchive from './VPArchive';
-    import Logger from './Common';
+    import * as Common from './Common';
     var process = require('process');
     var moment = require('moment');
     var SerialPort = require("serialport");
@@ -30,23 +30,23 @@
                 });
             }
             catch (e) {
-                Logger.error('VPDevice:' + e);
+                Common.Logger.error('VPDevice:' + e);
                 process.exit(-1);
             }
 
             this.port.on('open',data => {
                 if (this.onOpen)
                     this.onOpen();
-                Logger.info('comport open');
+                Common.Logger.info('comport open');
             });
 
             this.port.on('close', ()=> {
-                Logger.info('comport closed');
+                Common.Logger.info('comport closed');
             });
 
             this.port.on('error',err => {
                 this.errorReceived(err); 
-                Logger.error(err.message);
+                Common.Logger.error(err.message);
                 process.exit(-1);
             });
 
@@ -150,7 +150,7 @@
                         },
                             err => {                   
                                 reject();
-                                Logger.error('getArchived error');
+                                Common.Logger.error('getArchived error');
                         });                               
                     }
                     else {
@@ -171,7 +171,7 @@
         sendArchiveCmd(cmd) {
             return new Promise((resolve,reject)=>{
                 var rj = err => {
-                    Logger.error(err);
+                    Common.Logger.error(err);
                     reject(err);
                 }
 
@@ -211,7 +211,7 @@
             pgCount = allPages ? 511 : pgCount; 
             firstRecord = base.nextDecimal();           
 
-            Logger.info('archive retrieving ' + pgCount + ' pages');
+            Common.Logger.info('archive retrieving ' + pgCount + ' pages');
             this.port.write([6]);       //acknowledge- start download
             if (pgCount == 0) {
                 callback(archives);
@@ -242,7 +242,7 @@
 
                         received = [];
 
-                        Logger.info('retrieved page ' + pgIndex + ' of ' + pgCount);
+                        Common.Logger.info('retrieved page ' + pgIndex + ' of ' + pgCount);
 
                         if (pgIndex == pgCount) {
                             callback(archives);

@@ -3,7 +3,7 @@
 import WebRequest from './WebRequest';
 import WeatherAlert from './WeatherAlert';
 import VPCurrent from './VPCurrent';
-import Logger from './Common';
+import * as Common from './Common';
 var moment = require('moment');
 var http = require('http');
 
@@ -76,23 +76,23 @@ export default class Wunderground {
                     current.wuUpdated = new Date();
                 });
                 response.on('timeout', socket => {
-                    Logger.error('upload resp timeout');
+                    Common.Logger.error('upload resp timeout');
                 });
                 response.on('error', err => {
-                    Logger.error('upload resp error' + err);
+                    Common.Logger.error('upload resp error' + err);
                 });
             });
             request.on('error', err => {
-                Logger.error('upload error ' + err);
+                Common.Logger.error('upload error ' + err);
             });
             request.setTimeout(30000, () => {
-                Logger.error('upload timeout');
+                Common.Logger.error('upload timeout');
             });
             request.end();
         }
         catch (ex) {
-            Logger.error('upload exception');
-            Logger.error(ex);
+            Common.Logger.error('upload exception');
+            Common.Logger.error(ex);
         }
     }
 

@@ -1,7 +1,7 @@
 ﻿declare function require(name: string);
 var http = require('http');
 var moment = require('moment');
-import Logger from './Common';
+import * as Common from './Common';
 import VantageWs from './VantageWS';
 
 
@@ -35,7 +35,7 @@ export default class WebServer {
     }
 
     requestReceived (req, res) {       
-        Logger.info('WebRequest ' + moment().format('hh:mm:ss'));
+        Common.Logger.info('WebRequest ' + moment().format('hh:mm:ss'));
         var allowOrigins  = this.config.allowOrigins[0];    
         var origin = req.headers.origin;    
 
@@ -49,7 +49,7 @@ export default class WebServer {
         if (allowOrigin.length)
             allowOrigins = allowOrigin[0];
 
-        Logger.info(allowOrigins);    
+        Common.Logger.info(allowOrigins);    
 
         if (req.url == '/hilows') {
             if (this.ws.hilows) {
@@ -118,10 +118,18 @@ export default class WebServer {
             }
             catch (ex) {
                 res.end("error");
-            }
-                 
-
-        
+            }        
+        }
+        else if (req.url == '/phone') {
+            var body = '';
+            req.on('data', data => {
+                body += data;                
+            });
+            req.on('end', () => {
+                var msg = JSON.parse(body);     
+                msg.source = 'phone';
+                this.emit('alert', msg);
+            });
         }
         else {
             if (this.ws.current) {
@@ -138,8 +146,8 @@ export default class WebServer {
 
     webSocket() {
         this.io.on('connection', (socket) => {
-            Logger.info('socket connection from:' + socket.request.connection.remoteAddress)
-            //Logger.info(socket.request.headers);
+            Common.Logger.info('socket connection from:' + socket.request.connection.remoteAddress)
+            //Common.Logger.info(socket.request.headers);
 
             if (this.ws.current)
                 socket.emit('current', JSON.stringify(this.ws.current));
@@ -151,13 +159,13 @@ export default class WebServer {
                 socket.emit('alerts', JSON.stringify(this.ws.alerts));
 
             socket.on('hilows', (data) => {
-                Logger.info('hilows req');
+                Common.Logger.info('hilows req');
                 socket.emit('hilows', JSON.stringify(this.ws.hilows));
             });
 
        	    socket.on('message',
                 (msgtype,msg) => {				 
-                    this.io.sockets.emit('alert', msg);
+                    this.io.sockets.emit('message', msg);
                 });
 
         });
@@ -188,17 +196,17 @@ export default class WebServer {
                 var socket = this.io('http://rpizero:9002');
 
                 socket.on('connect', () => {
-                    Logger.info('connected');
+                    Common.Logger.info('connected');
                     socket
                         .emit('authenticate', { token: token })
                         .on('authenticated', () => {
-                            Logger.info('authenticated');
+                            Common.Logger.info('authenticated');
                             socket.on('current', (x) => {
                                 socket.emit('oncurrent', this.ws.current);
                             });
                         })
                         .on('unauthorized', (msg) => {
-                            Logger.info("unauthorized: " + JSON.stringify(msg.data));                     
+                            Common.Logger.info("unauthorized: " + JSON.stringify(msg.data));                     
                         })
                    
                 });

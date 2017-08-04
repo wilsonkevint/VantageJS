@@ -9,7 +9,7 @@ const VPCurrent_1 = require("./VPCurrent");
 const VPHiLow_1 = require("./VPHiLow");
 const VPBase_1 = require("./VPBase");
 const Wunderground_1 = require("./Wunderground");
-const Common_1 = require("./Common");
+const Common = require("./Common");
 const MongoDB_1 = require("./MongoDB");
 const events_1 = require("events");
 class VantageWs {
@@ -26,7 +26,7 @@ class VantageWs {
         };
         this.mongo = new MongoDB_1.default(config);
         this.mongo.connect().then(() => {
-            Common_1.default.info('database connected');
+            Common.Logger.info('database connected');
         });
     }
     start() {
@@ -37,7 +37,7 @@ class VantageWs {
             }
             if (!this.pauseTimer) {
                 if (lastHiLow == null || lastHiLow >= 300) {
-                    this.pause(30, null);
+                    this.pause(180, null);
                     this.hiLowArchive();
                 }
                 else {
@@ -85,14 +85,18 @@ class VantageWs {
     updateArchives() {
         var promise = new Promise((resolve, reject) => {
             this.mongo.getLast('archive').then((last) => {
-                var lastDt = last.archiveDate + ' ' + last.archiveTime;
+                var lastDt = last ? last.archiveDate + ' ' + last.archiveTime : null;
+                var lastId = last ? last._id : 0;
                 this.retrieveArchives(lastDt).then((archives) => {
                     try {
                         archives.forEach((a) => {
                             a._id = moment(a.archiveDate + ' ' + a.archiveTime, 'MM/DD/YYYY HH:mm').unix();
-                            if (a._id > last._id) {
+                            if (a._id > lastId) {
                                 this.mongo.insert('archive', a).then(res => {
                                     console.log('inserted ' + a.archiveDate + ' ' + a.archiveTime);
+                                }, err => {
+                                    this.errorHandler(err);
+                                    reject(err);
                                 });
                             }
                         });
@@ -112,7 +116,7 @@ class VantageWs {
         return promise;
     }
     errorHandler(err) {
-        Common_1.default.error(err);
+        Common.Logger.error(err);
     }
     getArchivesDB(startDate) {
         var dt = moment(startDate, 'MM/DD/YYYY HH:mm').unix();
@@ -128,7 +132,7 @@ class VantageWs {
             this.device.getArchived(startDate).then((archives) => {
                 resolve(archives);
             }, err => {
-                Common_1.default.error('getArchives', err);
+                Common.Logger.error('getArchives', err);
                 reject(err);
             });
         });
@@ -146,18 +150,18 @@ class VantageWs {
                             this.hilows.forecast = this.forecast;
                             this.emit('hilows', this.hilows);
                         });
-                        Common_1.default.info('hi temp:' + this.hilows.temperature.dailyHi);
+                        Common.Logger.info('hi temp:' + this.hilows.temperature.dailyHi);
                         callback(this.hilows);
                     }
-                }, (err) => { Common_1.default.error(err); callback('error'); });
+                }, (err) => { Common.Logger.error(err); callback('error'); });
             });
         }, err => {
-            Common_1.default.error('hilows device not available');
+            Common.Logger.error('hilows device not available');
             callback('error');
         });
     }
     static deviceError(err) {
-        Common_1.default.error(err);
+        Common.Logger.error(err);
     }
     getForecast() {
         var last;
@@ -186,6 +190,13 @@ class VantageWs {
         setInterval(() => {
             doalerts();
         }, 60000 * 15);
+    }
+    getHourlyRain() {
+        var csr = this.mongo.getLastRecs('archives', 15);
+        this.current.hourlyRain = 0;
+        csr.forEach(rec => {
+            this.current.hourlyRain += rec.rainClicks;
+        });
     }
     sendCommand(cmd, callback) {
         this.pause(2, () => {
