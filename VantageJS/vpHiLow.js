@@ -5,6 +5,8 @@ class VPHiLow extends VPBase_1.default {
     constructor(data) {
         super(data);
         this.dataIndx = 0;
+        if (data == null)
+            return;
         this.barometer = this.fBarometerHL();
         this.windSpeed = this.fWindSpeed();
         this.inTemperature = this.fTemperatureHL(false);

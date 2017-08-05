@@ -2,79 +2,51 @@
 var net = require('net');
 var moment = require('moment');
 import VPCurrent from './VPCurrent';
-import MongoDB from './MongoDB';
-import * as Common from './Common';
+import VPHiLow from './VPHiLow';
+import * as Common from './Common'; 
 
 export default class CWOP {
-    config: any;
-    mongo: MongoDB;
+    config: any;   
     current: VPCurrent;
     client: any;
-    tot24rain: number;
-    hourlyrain: number;
+    hilows: VPHiLow;
+    cwopUpdated: boolean;
 
-    constructor(config, current: VPCurrent) {
-        this.config = require('./VantageJS.json');
-        this.mongo = new MongoDB(config);
+    constructor(config) {
+        this.config = require('./VantageJS.json');    
+    }
+
+    update(current: VPCurrent, hilows: VPHiLow) {       
+        var Util = Common.Util;       
+        this.cwopUpdated = false;
         this.current = current;
+        this.hilows = hilows;
         this.client = new net.Socket();
-    }
-
-    update() {       
-        var Util = Common.Util;
-        this.tot24rain = 0;
-
-        this.getRain().then(() => {
-            this.client.connect(14580, 'cwop.aprs.net', ()=> {
-                console.log('Connected to cwop');
-                this.client.write('user ' + this.config.CWOPId + ' pass -1 vers VantageJS 1.0\r\n');
-            });
-
-            this.client.on('data', data => {
-                this.dataReceived(data);
-            });
-
-            this.client.on('close', () => {
-                console.log('cwop Connection closed');
-            });
-        });   
-    }
-
-    getRain() {
-        var now = moment();
-        var yday = now.add(-30, 'days').unix();
-        var hourAgo = now.add(-1, 'hours').unix();
-
+       
         var promise = new Promise((resolve, reject) => {
-            this.mongo.connect().then(() => {
-                this.mongo.sum('archive', 'rainClicks', { _id: { $gte: yday } }, (err, res) => {
-                    if (!err) {
-                        this.tot24rain = res[0].total;
-                    }
-                    else {
-                        Common.Logger.error(err);
-                        reject();
-                    }
-
-                    this.mongo.sum('archive', 'rainClicks', { _id: { $gte: hourAgo } }, (err, res) => {
-                        if (!err) {
-                            this.hourlyrain = res[0].total;
-                            resolve();
-                        }
-                        else {
-                            Common.Logger.error(err);
-                            reject();
-                        }
-                    });
-
+                this.client.connect(14580, 'cwop.aprs.net', () => {
+                    console.log('Connected to cwop');
+                    this.client.write('user ' + this.config.CWOPId + ' pass -1 vers VantageJS 1.0\r\n');            //login to cwop
                 });
-            }, err => {
-                Common.Logger.error(err);
-            });
+
+                this.client.on('data', data => {
+                    this.dataReceived(data);
+                    if (this.cwopUpdated) {
+                        resolve();
+                    }
+                });
+
+                this.client.on('close', () => {
+                    console.log('cwop Connection closed');
+                    if (!this.cwopUpdated)
+                        reject();
+                });
+            
         });
 
         return promise;
-    }
+        
+    }    
 
     dataReceived(data) {
         var resp = String.fromCharCode.apply(null, data);
@@ -91,8 +63,8 @@ export default class CWOP {
                 + '/' + this.formatNum(this.current.windAvg, 3)
                 + 'g' + this.formatNum(this.current.windSpeed, 3)
                 + 't' + this.formatNum(this.current.temperature, 3)
-                + 'r' + this.formatNum(this.hourlyrain, 3)
-                + 'p' + this.formatNum(this.tot24rain,3) 
+                + 'r' + this.formatNum(this.hilows.rain1hour, 3)
+                + 'p' + this.formatNum(this.hilows.rain24hour, 3) 
                 + 'P' + this.formatNum(this.current.dayRain * 100, 3)
                 + 'b' + this.formatNum(baromb, 5)
                 + 'h' + this.formatNum(humidity, 2);
@@ -101,6 +73,7 @@ export default class CWOP {
 
             try {
                 this.client.write(updateStr + '\n\r');
+                this.cwopUpdated = true;
             }
             catch (ex) {
                 Common.Logger.error(ex);

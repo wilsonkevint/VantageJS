@@ -70,6 +70,9 @@
     <TypeScriptCompile Include="mongotest.ts">
       <SubType>Code</SubType>
     </TypeScriptCompile>
+    <TypeScriptCompile Include="QueryEngine.ts">
+      <SubType>Code</SubType>
+    </TypeScriptCompile>
     <TypeScriptCompile Include="test.ts" />
     <TypeScriptCompile Include="VPArchive.ts" />
     <TypeScriptCompile Include="VPBase.ts" />

@@ -63,8 +63,7 @@ export default class VPCurrent extends VPBase {
     windDirection: string;
     humidity: number;
     dewpoint: number;
-    rainRate: number;
-    hourlyRain: number;
+    rainRate: number;   
     stormRain: number;
     stormDate: string;
     dayRain: number;

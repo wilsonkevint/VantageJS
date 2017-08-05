@@ -4,6 +4,8 @@ export default class VPHiLow extends VPBase {
     constructor(data: Uint8Array) {
         super(data);
         this.dataIndx = 0;
+        if (data == null)
+            return;
 
         this.barometer = this.fBarometerHL();
         this.windSpeed = this.fWindSpeed();
@@ -42,6 +44,8 @@ export default class VPHiLow extends VPBase {
     humidity: HiLow;
     dateLoaded: Date;
     forecast: any;
+    rain1hour: number;
+    rain24hour: number;
 
     fBarometerHL(): HiLow {
         var hilow = new HiLow();

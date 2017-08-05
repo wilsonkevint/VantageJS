@@ -14,7 +14,7 @@ class VPArchive extends VPBase_1.default {
             this.outTemp = this.fTemperature();
             this.outTempHi = this.fTemperature();
             this.outTempLow = this.fTemperature();
-            this.rainClicks = this.fTemperature();
+            this.rainClicks = this.nextDecimal();
             this.rainHiRate = this.fRain();
             this.barometer = this.fBarometer();
             this.radition = this.nextDecimal();

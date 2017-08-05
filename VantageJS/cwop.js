@@ -2,58 +2,32 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 var net = require('net');
 var moment = require('moment');
-const MongoDB_1 = require("./MongoDB");
 const Common = require("./Common");
 class CWOP {
-    constructor(config, current) {
+    constructor(config) {
         this.config = require('./VantageJS.json');
-        this.mongo = new MongoDB_1.default(config);
-        this.current = current;
-        this.client = new net.Socket();
     }
-    update() {
+    update(current, hilows) {
         var Util = Common.Util;
-        this.tot24rain = 0;
-        this.getRain().then(() => {
+        this.cwopUpdated = false;
+        this.current = current;
+        this.hilows = hilows;
+        this.client = new net.Socket();
+        var promise = new Promise((resolve, reject) => {
             this.client.connect(14580, 'cwop.aprs.net', () => {
                 console.log('Connected to cwop');
-                this.client.write('user ' + this.config.CWOPId + ' pass -1 vers VantageJS 1.0\r\n');
+                this.client.write('user ' + this.config.CWOPId + ' pass -1 vers VantageJS 1.0\r\n'); //login to cwop
             });
             this.client.on('data', data => {
                 this.dataReceived(data);
+                if (this.cwopUpdated) {
+                    resolve();
+                }
             });
             this.client.on('close', () => {
                 console.log('cwop Connection closed');
-            });
-        });
-    }
-    getRain() {
-        var now = moment();
-        var yday = now.add(-30, 'days').unix();
-        var hourAgo = now.add(-1, 'hours').unix();
-        var promise = new Promise((resolve, reject) => {
-            this.mongo.connect().then(() => {
-                this.mongo.sum('archive', 'rainClicks', { _id: { $gte: yday } }, (err, res) => {
-                    if (!err) {
-                        this.tot24rain = res[0].total;
-                    }
-                    else {
-                        Common.Logger.error(err);
-                        reject();
-                    }
-                    this.mongo.sum('archive', 'rainClicks', { _id: { $gte: hourAgo } }, (err, res) => {
-                        if (!err) {
-                            this.hourlyrain = res[0].total;
-                            resolve();
-                        }
-                        else {
-                            Common.Logger.error(err);
-                            reject();
-                        }
-                    });
-                });
-            }, err => {
-                Common.Logger.error(err);
+                if (!this.cwopUpdated)
+                    reject();
             });
         });
         return promise;
@@ -71,14 +45,15 @@ class CWOP {
                 + '/' + this.formatNum(this.current.windAvg, 3)
                 + 'g' + this.formatNum(this.current.windSpeed, 3)
                 + 't' + this.formatNum(this.current.temperature, 3)
-                + 'r' + this.formatNum(this.hourlyrain, 3)
-                + 'p' + this.formatNum(this.tot24rain, 3)
+                + 'r' + this.formatNum(this.hilows.rain1hour, 3)
+                + 'p' + this.formatNum(this.hilows.rain24hour, 3)
                 + 'P' + this.formatNum(this.current.dayRain * 100, 3)
                 + 'b' + this.formatNum(baromb, 5)
                 + 'h' + this.formatNum(humidity, 2);
             console.log(updateStr);
             try {
                 this.client.write(updateStr + '\n\r');
+                this.cwopUpdated = true;
             }
             catch (ex) {
                 Common.Logger.error(ex);

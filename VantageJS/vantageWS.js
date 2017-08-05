@@ -12,6 +12,8 @@ const Wunderground_1 = require("./Wunderground");
 const Common = require("./Common");
 const MongoDB_1 = require("./MongoDB");
 const events_1 = require("events");
+const QueryEngine_1 = require("./QueryEngine");
+const CWOP_1 = require("./CWOP");
 class VantageWs {
     constructor(comPort, config) {
         this.device = new VPDevice_1.default(comPort);
@@ -27,6 +29,7 @@ class VantageWs {
         this.mongo = new MongoDB_1.default(config);
         this.mongo.connect().then(() => {
             Common.Logger.info('database connected');
+            this.queryEngine = new QueryEngine_1.default(config, this.mongo);
         });
     }
     start() {
@@ -66,7 +69,20 @@ class VantageWs {
         this.getHiLows(() => {
             this.updateArchives().then(() => {
                 this.clearPause();
+                this.queryEngine.getRain().then((rain) => {
+                    this.hilows.rain24hour = rain.last24;
+                    this.hilows.rain1hour = rain.hourly;
+                    if (this.current != null) {
+                        var cwop = new CWOP_1.default(this.config);
+                        cwop.update(this.current, this.hilows).then(() => {
+                            console.log('cwop updated');
+                        }, err => {
+                            VantageWs.deviceError('cwop error ' + err);
+                        });
+                    }
+                }, VantageWs.deviceError);
             }, err => {
+                VantageWs.deviceError(err);
                 this.clearPause();
             });
         });
@@ -107,9 +123,11 @@ class VantageWs {
                         reject(e);
                     }
                 }, err => {
+                    this.errorHandler(err);
                     reject(err);
                 });
             }, err => {
+                this.errorHandler(err);
                 reject(err);
             });
         });
@@ -181,8 +199,8 @@ class VantageWs {
         var doalerts = () => {
             this.wu.getAlerts().then(alerts => {
                 this.alerts = alerts;
-                if (alerts.length && this.onAlert) {
-                    this.onAlert(alerts);
+                if (alerts.length) {
+                    this.emit('alerts', alerts);
                 }
             });
         };
@@ -190,13 +208,6 @@ class VantageWs {
         setInterval(() => {
             doalerts();
         }, 60000 * 15);
-    }
-    getHourlyRain() {
-        var csr = this.mongo.getLastRecs('archives', 15);
-        this.current.hourlyRain = 0;
-        csr.forEach(rec => {
-            this.current.hourlyRain += rec.rainClicks;
-        });
     }
     sendCommand(cmd, callback) {
         this.pause(2, () => {
@@ -208,9 +219,8 @@ class VantageWs {
                             result += String.fromCharCode(data[i]);
                         }
                         callback(result);
-                    }, err => {
-                    });
-                });
+                    }, this.errorHandler);
+                }, this.errorHandler);
             });
         });
     }
