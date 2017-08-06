@@ -1,14 +1,13 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
+const process = require('process');
+const moment = require('moment');
+const SerialPort = require("serialport");
 const VPBase_1 = require("./VPBase");
 const VPArchive_1 = require("./VPArchive");
 const Common = require("./Common");
-var process = require('process');
-var moment = require('moment');
-var SerialPort = require("serialport");
 class VPDevice {
     constructor(comPort) {
-        this.loopCount = 0;
         this.portName = comPort;
         try {
             this.port = new SerialPort(comPort, {
@@ -37,35 +36,24 @@ class VPDevice {
             process.exit(-1);
         });
         this.port.on('data', (data) => {
-            //console.log('ondata', data.length);
+            this.serialData = data;
             if (this.dataReceived)
-                this.dataReceived(data);
+                this.dataReceived();
         });
     }
     errorReceived(err) {
         VPDevice.isBusy = false;
     }
     readLoop(loops, callback) {
-        this.dataReceived = (data) => {
-            var received = [];
-            if (data[0] == 6) {
-                if (data.length > 1) {
-                    received.push.apply(received, data.slice(1));
-                }
-            }
-            else {
-                received.push.apply(received, data);
-            }
-            callback(received);
-            this.loopCount++;
-        };
+        this.dataReceived = callback;
         this.port.write('LOOP ' + loops.toString() + '\n');
     }
     getSerial(cmd, reqchars, expectAck) {
         var promise = new Promise((resolve, reject) => {
             var received = [];
             VPDevice.isBusy = true;
-            this.dataReceived = (data) => {
+            this.dataReceived = () => {
+                var data = this.serialData;
                 if (expectAck) {
                     if (data[0] == 6) {
                         expectAck = false;
@@ -167,7 +155,8 @@ class VPDevice {
             callback(archives);
             return;
         }
-        this.dataReceived = (data) => {
+        this.dataReceived = () => {
+            var data = this.serialData;
             if (received.length < 267)
                 received.push.apply(received, data);
             if (received.length == 267) {
@@ -198,11 +187,10 @@ class VPDevice {
             }
         };
     }
-    static validateCRC(data) {
+    static validateCRC(data, start) {
         var crcNum = 0;
-        for (var i = 0; i < data.length; i++) {
-            var d = data[i];
-            var indx = (crcNum >> 8) ^ d;
+        for (var i = start; i < data.length; i++) {
+            var indx = (crcNum >> 8) ^ data[i];
             crcNum = VPBase_1.default.uint16((crcNum << 8) ^ VPDevice.crc_table[indx]);
         }
         return crcNum == 0;
@@ -227,7 +215,8 @@ class VPDevice {
             //        resolve(true);
             //} 
             VPDevice.isBusy = true;
-            this.dataReceived = (data) => {
+            this.dataReceived = () => {
+                var data = this.serialData;
                 if (data.length == 99) {
                     console.log('wakeup got LOOP data');
                 }

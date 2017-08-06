@@ -1,8 +1,8 @@
 ﻿declare function require(name: string); 
-var moment = require('moment');
-var http = require('http');
-var os = require('os');
-var linq = require('linq');
+const moment = require('moment');
+const http = require('http');
+const os = require('os');
+const linq = require('linq');
 
 import VPDevice from './VPDevice';
 import VPCurrent from './VPCurrent';
@@ -32,31 +32,32 @@ export default class VantageWs  {
     pauseTimer: number;
     isActive: boolean;
     queryEngine: QueryEngine;
-    
-    public constructor(comPort: string, config: any) {        
-        
-        this.device = new VPDevice(comPort);     
+
+    public constructor(config: any) {   
+           
         var updateFreqMs = config.updateFrequency * 1000;
       
-        this.config = config;
-        this.wu = new Wunderground(config);
-        this.eventEmitter = new EventEmitter();
-        this.getAlerts();
-        
-        this.device.onOpen = () => {
-            this.isActive = true;
-            this.start();   
-        }
+        this.config = config;       
+        this.eventEmitter = new EventEmitter();         
 
         this.mongo = new MongoDB(config);
-        this.mongo.connect().then(() => {            
-            Common.Logger.info('database connected');
-            this.queryEngine = new QueryEngine(config, this.mongo);
-        })        
-     
+        this.wu = new Wunderground(config, this.mongo);       
+        this.queryEngine = new QueryEngine(config, this.mongo);
+    }
+
+    init(cb) {
+        this.mongo.connect().then(() => {
+            var comPort = this.config[os.platform() + '_serialPort'];
+            this.device = new VPDevice(comPort);
+            this.device.onOpen = () => {
+                this.isActive = true;
+                cb();
+            }
+        });
     }
 
     start() {    
+        this.getAlerts();
 
         this.loopTimer = setInterval(() => {
             var lastHiLow = null;
@@ -86,41 +87,44 @@ export default class VantageWs  {
         this.device.isAvailable().then( ()=> {
 
             this.device.wakeUp().then(result => {
-
-                this.device.readLoop(1, data => {                  
-                  
-                    if (VPDevice.validateCRC(data)) {
-                        this.current = new VPCurrent(data);                        
-                        this.wu.upload(this.current);
-
-                        this.emit('current',this.current);
-                    }                    
-                })
+                this.device.readLoop(1, () => { this.processLoop(); });
             }, VantageWs.deviceError);
 
         }, VantageWs.deviceError);      
 
     }
 
+    processLoop() {
+        var data = this.device.serialData;
+        if (VPDevice.validateCRC(data, 1)) {
+            this.current = new VPCurrent(data);
+            this.wu.upload(this.current);
+
+            this.emit('current', this.current);
+        }     
+    }
+
     hiLowArchive() {  
         this.getHiLows(() => {
             this.updateArchives().then(() => {
-                this.clearPause();
-                                
-                this.queryEngine.getRain().then((rain: any) => {
-                    this.hilows.rain24hour = rain.last24;
-                    this.hilows.rain1hour = rain.hourly;
+                this.clearPause();         
 
-                    if (this.current != null) {
+                if (this.current != null) {
+
+                    this.queryEngine.getRainTotals().then((rain: any) => {
+                        this.hilows.rain24hour = rain.last24;
+                        this.hilows.rain1hour = rain.hourly;
+
                         var cwop = new CWOP(this.config);
                         cwop.update(this.current, this.hilows).then(() => {
                             console.log('cwop updated');
                         }, err => {
                             VantageWs.deviceError('cwop error ' + err);
                         });
-                    }
 
-                }, VantageWs.deviceError);                
+
+                    }, VantageWs.deviceError);
+                }               
                
             }, err => {
                 VantageWs.deviceError(err);
@@ -152,10 +156,10 @@ export default class VantageWs  {
                 var lastId = last ? last._id : 0;
 
                 this.retrieveArchives(lastDt).then((archives: Array<VPArchive>) => {
-                    try {
-                         
+                    try {                         
                         archives.forEach((a: VPArchive) => {
                             a._id = moment(a.archiveDate + ' ' + a.archiveTime, 'MM/DD/YYYY HH:mm').unix();
+
                             if (a._id > lastId) {
                                 this.mongo.insert('archive',a).then(res => {
                                     console.log('inserted ' + a.archiveDate + ' ' + a.archiveTime);
@@ -164,9 +168,10 @@ export default class VantageWs  {
                                     reject(err);
                                 });
                             }
-                        });
-
+                        });   
+                        
                         resolve();
+                        
                     }
                     catch (e) {
                         this.errorHandler(e);
@@ -183,6 +188,58 @@ export default class VantageWs  {
         });
 
         return promise;
+    }   
+
+    updateFromArchive() {
+        var lastDt = null;
+        var dayRain;
+        var promise = new Promise((resolve, reject) => {
+
+            this.mongo.find('wuUpdated', { _id: 1 }).then(wuUpd => {
+                if (wuUpd != null) {
+                    var csr = this.mongo.sort('archive', { _id: { $gt: wuUpd.lastUpdate } }, { _id: 1 });
+                    csr.toArray().then((archives: Array<VPArchive>) => {
+
+                        archives.forEach((arch: VPArchive) => {
+                            if (!lastDt || lastDt != arch.archiveDate) {
+                                dayRain = 0;
+                                lastDt = arch.archiveDate;
+                            }
+                            if (arch.rainClicks > 0)
+                                dayRain += arch.rainClicks / 100;
+
+                            if (arch._id > wuUpd.lastUpdate) {
+                                var curr = new VPCurrent(null);
+                                curr.barometer = arch.barometer;
+                                curr.dayRain = dayRain;
+                                curr.humidity = arch.humidity;
+                                curr.rainRate = (arch.rainClicks / 100) * 4;          //rainClicks / 100 * archival frequency of every 15 mins
+                                curr.temperature = arch.outTemp;
+                                curr.windAvg = arch.windAvg;
+                                curr.windDir = arch.prevWindDir;
+                                curr.windSpeed = arch.windHi;
+                                curr.dewpoint = VPCurrent.fDewpoint(curr.temperature, curr.humidity);
+                                curr.wuUpdated = moment(arch.archiveDate + ' ' + arch.archiveTime, "MM/DD/yyyy HH:mm");
+                                this.wu.upload(curr);
+                                Common.Logger.info('updateFromArchive:', curr.wuUpdated.toString());
+                            }                           
+                        });  
+
+                        resolve();
+                    });
+
+                          
+                }               
+
+            }, err => {
+                Common.Logger.error(err);
+                reject();
+            }
+            );
+        });
+
+        return promise;
+       
     }
 
     errorHandler(err) {
@@ -222,7 +279,7 @@ export default class VantageWs  {
 
                 this.device.getSerial("HILOWS", 438, true).then(data => {                   
 
-                    if (VPDevice.validateCRC(data)) {
+                    if (VPDevice.validateCRC(data,0)) {
                         this.hilows = new VPHiLow(data);
                         this.hilows.dateLoaded = new Date();  
 

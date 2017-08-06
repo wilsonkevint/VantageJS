@@ -28,7 +28,11 @@ export default class MongoDB {
     }
 
     find(name, criteria) {
-        return this.db.collection(name).find({ "_id": criteria });
+        return this.db.collection(name).find(criteria).next();
+    }
+
+    sort(name, criteria, sortby) {
+        return this.db.collection(name).find(criteria).sort(sortby);
     }
 
     insert(name,obj) {
@@ -47,6 +51,10 @@ export default class MongoDB {
                 }
             }
         ],fn)
+    }
+
+    update(name, obj, upsert: boolean) {
+        return this.db.collection(name).update({ _id: obj._id }, obj, {upsert:upsert})
     }
 
     getLast(name): any {

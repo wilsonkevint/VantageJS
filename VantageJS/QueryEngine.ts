@@ -34,7 +34,7 @@ export default class QueryEngine {
         return promise;
     }
 
-    getRain() {        
+    getRainTotals() {        
         var yday = moment().add(-1, 'days').unix();
         console.log(moment.unix(yday));
         var hourAgo = moment().add(-1, 'hour').unix();

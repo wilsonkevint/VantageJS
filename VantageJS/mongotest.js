@@ -1,20 +1,22 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-var moment = require('moment');
+const moment = require('moment');
 const MongoDB_1 = require("./MongoDB");
-var config = require('./VantageJS.json');
+const config = require('./VantageJS.json');
 var mongo = new MongoDB_1.default(config);
-const QueryEngine_1 = require("./QueryEngine");
 mongo.connect().then(connected => {
     var db = mongo.db;
+    mongo.find('archive', { _id: 1500174900 }).then((res) => {
+        console.log(res);
+    });
     //db.collection('archive').deleteMany({});
     //console.log(db.version());
-    var archive = db.collection('archive');
+    //var archive = db.collection('archive'); 
     //var cmd = archive.find({ rainClicks: {$gt:0}});
-    var query = new QueryEngine_1.default(config, mongo);
-    query.getRain().then(result => {
-        console.log(result);
-    });
+    //var query = new QueryEngine(config, mongo);
+    //query.getRainTotals().then(result => {
+    // console.log(result);
+    //})
     //cmd.forEach(rec => {
     //console.log(rec.rainClicks, rec.archiveDate + ' ' + rec.archiveTime);
     //if (rec.rainClicks > 1) {

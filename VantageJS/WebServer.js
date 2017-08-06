@@ -1,7 +1,7 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-var http = require('http');
-var moment = require('moment');
+const http = require('http');
+const moment = require('moment');
 const Common = require("./Common");
 class WebServer {
     constructor(config, ws) {

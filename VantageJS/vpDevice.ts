@@ -1,10 +1,10 @@
-﻿    declare function require(name: string);
-    import VPBase from './VPBase';
-    import VPArchive from './VPArchive';
-    import * as Common from './Common';
-    var process = require('process');
-    var moment = require('moment');
-    var SerialPort = require("serialport");
+﻿declare function require(name: string);
+const process = require('process');
+const moment = require('moment');
+const SerialPort = require("serialport");
+import VPBase from './VPBase';
+import VPArchive from './VPArchive';
+import * as Common from './Common';  
    
       
     export default class VPDevice {
@@ -13,12 +13,12 @@
         onOpen: any;
         lastActv: any;
         dataReceived: any;
-        static isBusy: boolean;
-        loopCount: number=0;
+        serialData: Uint8Array;       
+        static isBusy: boolean;       
      
         public constructor(comPort: string) {        
            
-            this.portName = comPort;
+            this.portName = comPort;        
 
             try {
                 this.port = new SerialPort(comPort, {
@@ -51,44 +51,31 @@
             });
 
             this.port.on('data', (data: Uint8Array) => {
-                //console.log('ondata', data.length);
+                this.serialData = data;
+
                 if (this.dataReceived)
-                    this.dataReceived(data);
+                    this.dataReceived();
             });
         }      
 
         errorReceived(err: any) {          
             VPDevice.isBusy = false;
         }
+     
 
         readLoop(loops: number, callback: any): any {
-            this.dataReceived = (data: Uint8Array) => {
-                var received = [];               
-
-                if (data[0] == 6) {
-
-                    if (data.length > 1) {
-                        received.push.apply(received, data.slice(1));
-                    }
-                }
-                else {
-                    received.push.apply(received, data);
-                }     
-
-                callback(received); 
-                this.loopCount++;
-            }
-
+            this.dataReceived = callback;           
             this.port.write('LOOP ' + loops.toString() + '\n');
-        }
-              
+        }       
+        
         getSerial(cmd: any, reqchars: number, expectAck: boolean): any {
            
             var promise = new Promise((resolve, reject) => {
                 var received = [];
                 VPDevice.isBusy = true;
 
-                this.dataReceived = (data: Uint8Array) => {
+                this.dataReceived = () => {
+                    var data = this.serialData;
                     if (expectAck) {
                         if (data[0] == 6) {
                             expectAck = false;
@@ -218,7 +205,8 @@
                 return;
             }
 
-            this.dataReceived = (data: any) => {
+            this.dataReceived = () => {
+                var data = this.serialData;
                 if (received.length < 267)
                     received.push.apply(received, data);
 
@@ -299,12 +287,11 @@
             0x6e17, 0x7e36, 0x4e55, 0x5e74, 0x2e93, 0x3eb2, 0xed1, 0x1ef0
         ];                     
 
-        static validateCRC(data): boolean {
+        static validateCRC(data: Uint8Array, start): boolean {
             var crcNum = 0;           
 
-            for (var i = 0; i < data.length; i++) {
-                var d = data[i];
-                var indx = (crcNum >> 8) ^ d;
+            for (var i = start; i < data.length; i++) {               
+                var indx = (crcNum >> 8) ^ data[i];
                 crcNum = VPBase.uint16((crcNum << 8) ^ VPDevice.crc_table[indx]);
             }
             return crcNum == 0;
@@ -337,7 +324,8 @@
                 //} 
                 VPDevice.isBusy = true; 
 
-                this.dataReceived = (data: any) => {
+                this.dataReceived = () => {
+                    var data = this.serialData;
                     if (data.length == 99) {
                         console.log('wakeup got LOOP data');
                     }

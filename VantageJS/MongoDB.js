@@ -24,7 +24,10 @@ class MongoDB {
         return promise;
     }
     find(name, criteria) {
-        return this.db.collection(name).find({ "_id": criteria });
+        return this.db.collection(name).find(criteria).next();
+    }
+    sort(name, criteria, sortby) {
+        return this.db.collection(name).find(criteria).sort(sortby);
     }
     insert(name, obj) {
         return this.db.collection(name).insert(obj);
@@ -41,6 +44,9 @@ class MongoDB {
                 }
             }
         ], fn);
+    }
+    update(name, obj, upsert) {
+        return this.db.collection(name).update({ _id: obj._id }, obj, { upsert: upsert });
     }
     getLast(name) {
         return this.db.collection(name).find().sort({ "_id": -1 }).limit(1).next();

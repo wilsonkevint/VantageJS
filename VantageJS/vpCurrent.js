@@ -4,6 +4,8 @@ const VPBase_1 = require("./VPBase");
 class VPCurrent extends VPBase_1.default {
     constructor(data) {
         super(data);
+        if (data == null)
+            return;
         this.dataIndx = 3;
         if (data[0] == 6)
             this.dataIndx++;
@@ -19,7 +21,7 @@ class VPCurrent extends VPBase_1.default {
         this.windDirection = this.fWindDirection(this.windDir);
         this.dataIndx += 15;
         this.humidity = this.nextByte();
-        this.dewpoint = this.fDewpoint(this.temperature, this.humidity);
+        this.dewpoint = VPCurrent.fDewpoint(this.temperature, this.humidity);
         this.dataIndx += 7;
         this.rainRate = this.fRain();
         this.dataIndx += 3;
@@ -71,7 +73,7 @@ class VPCurrent extends VPBase_1.default {
         else
             return "";
     }
-    fDewpoint(temperature, rh) {
+    static fDewpoint(temperature, rh) {
         var dewPt = 0;
         try {
             var tem = -1.0 * temperature;

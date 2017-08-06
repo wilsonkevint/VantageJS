@@ -4,6 +4,8 @@ export default class VPCurrent extends VPBase {
 
     constructor(data: Uint8Array) {
         super(data);
+        if (data == null)
+            return;
 
         this.dataIndx = 3;  
         if (data[0] == 6)
@@ -25,7 +27,7 @@ export default class VPCurrent extends VPBase {
         this.dataIndx += 15;
 
         this.humidity = this.nextByte();
-        this.dewpoint = this.fDewpoint(this.temperature, this.humidity);
+        this.dewpoint = VPCurrent.fDewpoint(this.temperature, this.humidity);
 
         this.dataIndx += 7;
 
@@ -76,7 +78,7 @@ export default class VPCurrent extends VPBase {
     sunrise: string;
     sunset: string;
     dateLoaded: Date;
-    wuUpdated: Date;
+    wuUpdated: any;
 
 
     fBarometerTrend(): string {
@@ -117,7 +119,7 @@ export default class VPCurrent extends VPBase {
     }
 
 
-    fDewpoint(temperature: number, rh: number): number {
+    static fDewpoint(temperature: number, rh: number): number {
         var dewPt = 0;
 
         try {

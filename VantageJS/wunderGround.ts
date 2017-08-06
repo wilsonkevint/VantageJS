@@ -1,17 +1,19 @@
 ﻿declare function require(name: string);
-
+const moment = require('moment');
+const http = require('http');
 import WebRequest from './WebRequest';
 import WeatherAlert from './WeatherAlert';
 import VPCurrent from './VPCurrent';
+import MongoDB from './MongoDB';
 import * as Common from './Common';
-var moment = require('moment');
-var http = require('http');
 
 export default class Wunderground {
     config: any;
+    mongo: MongoDB;
 
-    constructor(config) {
+    constructor(config, mongo: MongoDB) {
         this.config = config;
+        this.mongo = mongo;
     }
 
     getAlerts() {
@@ -53,14 +55,18 @@ export default class Wunderground {
         var config = this.config;
         var wuUserID = config.wuUserID;
         var wuPassword = config.wuPassword;
-        var dateutc = +moment().utc().format('YYYY-MM-DD HH:mm:ss').replace(' ', '%20');
+        if (current.wuUpdated == null)
+            current.wuUpdated = moment(); 
+
+        var dateutc = current.wuUpdated.utc().format('YYYY-MM-DD HH:mm:ss').replace(' ', '%20');;
 
         var path = eval('`' + config.uploadPath + '`')
-        +'&winddir=' + current.windDir + '&windspeedmph=' + current.windAvg
+            + '&winddir=' + current.windDir + '&windspeedmph=' + current.windAvg
             + '&windgustmph=' + current.windSpeed + '&tempf=' + current.temperature
             + '&rainin=' + current.rainRate + '&dailyrainin=' + current.dayRain + '&baromin=' + current.barometer
             + '&humidity=' + current.humidity + '&dewptf=' + current.dewpoint
-            + '&action=updateraw&realtime=1&rtfreq=' + config.updateFrequency;
+            + '&action=updateraw'
+            + '&realtime=1&rtfreq=' + config.updateFrequency;         
 
         var options = {
             host: config.uploadHost,
@@ -72,8 +78,15 @@ export default class Wunderground {
 
         try {
             var request = http.request(options, response => {
-                response.on('data', chunk => {                    
-                    current.wuUpdated = new Date();
+                response.on('data', chunk => {    
+                    var resultData = String.fromCharCode.apply(null, chunk);
+                   
+                    var timeStamp = current.wuUpdated.unix();
+
+                    this.mongo.update('wuUpdated', { _id: 1, lastUpdate: timeStamp }, true).then(() => {
+                    }, err => {
+                        Common.Logger.error(err);
+                    });
                 });
                 response.on('timeout', socket => {
                     Common.Logger.error('upload resp timeout');
@@ -89,10 +102,11 @@ export default class Wunderground {
                 Common.Logger.error('upload timeout');
             });
             request.end();
+           
         }
         catch (ex) {
             Common.Logger.error('upload exception');
-            Common.Logger.error(ex);
+            Common.Logger.error(ex.toString());
         }
     }
 

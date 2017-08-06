@@ -1,9 +1,8 @@
 ﻿declare function require(name: string);
-var http = require('http');
-var moment = require('moment');
+const http = require('http');
+const moment = require('moment');
 import * as Common from './Common';
 import VantageWs from './VantageWS';
-
 
 export default class WebServer {
     config:any;
