@@ -2,8 +2,6 @@
 const moment = require('moment');
 const http = require('http');
 const os = require('os');
-const linq = require('linq');
-
 import VPDevice from './VPDevice';
 import VPCurrent from './VPCurrent';
 import VPHiLow from './VPHiLow';
@@ -33,31 +31,37 @@ export default class VantageWs  {
     isActive: boolean;
     queryEngine: QueryEngine;
 
-    public constructor(config: any) {   
-           
-        var updateFreqMs = config.updateFrequency * 1000;
+    public constructor(config: any) {  
       
         this.config = config;       
         this.eventEmitter = new EventEmitter();         
 
         this.mongo = new MongoDB(config);
-        this.wu = new Wunderground(config, this.mongo);       
-        this.queryEngine = new QueryEngine(config, this.mongo);
+        this.wu = new Wunderground(config, this.mongo);    
     }
 
-    init(cb) {
-        this.mongo.connect().then(() => {
-            var comPort = this.config[os.platform() + '_serialPort'];
-            this.device = new VPDevice(comPort);
-            this.device.onOpen = () => {
-                this.isActive = true;
-                cb();
-            }
+    init() {
+        var promise = new Promise((resolve, reject) => {
+            this.mongo.connect().then(() => {
+                this.queryEngine = new QueryEngine(this.config, this.mongo);
+                if (this.config.runVWS == "1") {
+                    var comPort = this.config[os.platform() + '_serialPort'];
+                    this.device = new VPDevice(comPort);
+                    this.device.onOpen = () => {
+                        this.isActive = true;
+                        resolve();
+                    }
+                }
+                
+            },err=>reject(err));
         });
+        return promise;
     }
 
     start() {    
-        this.getAlerts();
+        this.getAlerts();        
+
+        this.hiLowArchive();
 
         this.loopTimer = setInterval(() => {
             var lastHiLow = null;
@@ -67,87 +71,91 @@ export default class VantageWs  {
             }
 
             if (!this.pauseTimer) {
-                if (lastHiLow == null || lastHiLow >= 300) {      
-                    this.pause(180, null);
+                if (lastHiLow >= 300) {
                     this.hiLowArchive();
                 }
-                else {                    
-                    this.startLoop();
+                else {
+                    if (this.current == null || VPBase.timeDiff(this.current.dateLoaded, 's') > 4) {
+                        this.startLoop();
+                    }
                 }
-            }
+            }            
 
-            if (this.current && this.config.debug) {
-                console.log('temp:' + this.current.temperature + ' ' + this.current.dateLoaded);
-            }
-
-        }, this.config.updateFrequency * 1000);
+        },  this.config.loopTimer * 1000);
     }
 
     startLoop() {      
         this.device.isAvailable().then( ()=> {
 
             this.device.wakeUp().then(result => {
-                this.device.readLoop(1, () => { this.processLoop(); });
+                this.device.readLoop(99, () => {
+                    this.processLoop();
+                });
             }, VantageWs.deviceError);
 
         }, VantageWs.deviceError);      
 
     }
 
+    stop() {
+        clearInterval(this.loopTimer);
+        this.device.wakeUp();               //clear loop
+    }
+
     processLoop() {
         var data = this.device.serialData;
-        if (VPDevice.validateCRC(data, 1)) {
+       
+        var startx = data.length == 99 ? 0 : 1; 
+        if (VPDevice.validateCRC(data, startx)) {
             this.current = new VPCurrent(data);
             this.wu.upload(this.current);
 
             this.emit('current', this.current);
+
+            if (this.config.debug) {
+                console.log('temp:' + this.current.temperature + ' ' + this.current.dateLoaded);
+            }
         }     
     }
 
     hiLowArchive() {  
+        this.pauseLoop(180, null);
+
         this.getHiLows(() => {
             this.updateArchives().then(() => {
                 this.clearPause();         
 
                 if (this.current != null) {
 
-                    this.queryEngine.getRainTotals().then((rain: any) => {
+                    this.queryEngine.getRainTotals(moment()).then((rain: any) => {
                         this.hilows.rain24hour = rain.last24;
                         this.hilows.rain1hour = rain.hourly;
 
-                        var cwop = new CWOP(this.config);
-                        cwop.update(this.current, this.hilows).then(() => {
-                            console.log('cwop updated');
-                        }, err => {
-                            VantageWs.deviceError('cwop error ' + err);
-                        });
+                        this.updateCWOP(this.current, this.hilows);
 
 
                     }, VantageWs.deviceError);
-                }               
+                }
+
+                this.updateFromArchive().then(() => {
+                }, this.errorHandler);
                
             }, err => {
                 VantageWs.deviceError(err);
                 this.clearPause();
             });
-        });
 
-
-        
+        });        
     }
 
-    archiveGroupBy(archives) {
-        var hiTemp = linq.from(archives).groupBy('$.archiveDate', '$.outTemp', this.queryArchives)
-        hiTemp.forEach(t => {
-            console.log(t);
-        });
-    }
-
-    queryArchives(key, group) {
-        return {
-            date: key, min: group.min(), max: group.max(), count: group.count()
-        }
-    }
+    updateCWOP(current, hilows) {
+        var cwop = new CWOP(this.config);
+        cwop.update(current, hilows).then(() => {
+            console.log('cwop updated');
+        },
+            err => VantageWs.deviceError('cwop error ' + err)
+        );
+    }   
 
     updateArchives() {      
         var promise = new Promise((resolve, reject) => {
@@ -155,7 +163,7 @@ export default class VantageWs  {
                 var lastDt = last ? last.archiveDate + ' ' + last.archiveTime : null;
                 var lastId = last ? last._id : 0;
 
-                this.retrieveArchives(lastDt).then((archives: Array<VPArchive>) => {
+                this.getArchives(lastDt).then((archives: Array<VPArchive>) => {
                     try {                         
                         archives.forEach((a: VPArchive) => {
                             a._id = moment(a.archiveDate + ' ' + a.archiveTime, 'MM/DD/YYYY HH:mm').unix();
@@ -169,7 +177,7 @@ export default class VantageWs  {
                                 });
                             }
                         });   
-                        
+
                         resolve();
                         
                     }
@@ -195,7 +203,7 @@ export default class VantageWs  {
         var dayRain;
         var promise = new Promise((resolve, reject) => {
 
-            this.mongo.find('wuUpdated', { _id: 1 }).then(wuUpd => {
+            this.mongo.find('wuUpdated', { _id: 1 }).next().then(wuUpd => {
                 if (wuUpd != null) {
                     var csr = this.mongo.sort('archive', { _id: { $gt: wuUpd.lastUpdate } }, { _id: 1 });
                     csr.toArray().then((archives: Array<VPArchive>) => {
@@ -221,6 +229,13 @@ export default class VantageWs  {
                                 curr.dewpoint = VPCurrent.fDewpoint(curr.temperature, curr.humidity);
                                 curr.wuUpdated = moment(arch.archiveDate + ' ' + arch.archiveTime, "MM/DD/yyyy HH:mm");
                                 this.wu.upload(curr);
+
+                                var hilows = new VPHiLow(null);
+                                this.queryEngine.getRainTotals(curr.wuUpdated).then((rain: any) => {
+                                    hilows.rain24hour = rain.last24;
+                                    hilows.rain1hour = rain.hourly;
+                                    this.updateCWOP(curr, hilows);
+                                }, VantageWs.deviceError);
                                 Common.Logger.info('updateFromArchive:', curr.wuUpdated.toString());
                             }                           
                         });  
@@ -242,23 +257,11 @@ export default class VantageWs  {
        
     }
 
-    errorHandler(err) {
-        Common.Logger.error(err);
-    }
+    errorHandler(err) {       
+        Common.Logger.error(+ err);
+    }    
 
-    getArchivesDB(startDate) {
-        var dt = moment(startDate, 'MM/DD/YYYY HH:mm').unix(); 
-
-        var promise = new Promise((resolve, reject) => {
-            this.mongo.find('archive',{ $gte: dt }).toArray().then(res => {
-                resolve(res);
-            });
-        });
-
-        return promise;
-    }
-
-    retrieveArchives(startDate) {       
+    getArchives(startDate) {       
         var promise = new Promise((resolve, reject) => {
             this.device.getArchived(startDate).then((archives: Array<VPArchive>) => {             
                 resolve(archives);
@@ -287,7 +290,7 @@ export default class VantageWs  {
                             this.forecast = forecast;
                             this.hilows.forecast = this.forecast;
                             this.emit('hilows', this.hilows);
-                        });                       
+                        }, this.errorHandler);                       
                        
 
                         Common.Logger.info('hi temp:' + this.hilows.temperature.dailyHi);
@@ -333,7 +336,7 @@ export default class VantageWs  {
                 if (alerts.length) {
                     this.emit('alerts', alerts);
                 }
-            });
+            }, this.errorHandler);
         }
 
         doalerts();
@@ -345,7 +348,7 @@ export default class VantageWs  {
      
     sendCommand(cmd, callback) {
 
-        this.pause(2, () => {
+        this.pauseLoop(2, () => {
             this.device.isAvailable().then(() => {
 
                 this.device.wakeUp().then(result => {
@@ -366,7 +369,34 @@ export default class VantageWs  {
         
     }
 
-    pause(secs, cb) {
+    getTime(cb) {
+        this.sendCommand("GETTIME", cb);
+    }
+
+    setTime() {
+        var data = [6];
+        var now = new Date();
+        data[0] = now.getSeconds();
+        data[1] = now.getMinutes();
+        data[2] = now.getHours();
+        data[3] = now.getDate() + 1;
+        data[4] = now.getMonth() + 1;
+        data[5] = now.getFullYear() - 1900;
+        var crc = VPDevice.getCRC(data);
+        data.push(crc);
+       
+        this.sendCommand("SETTIME", (result) => {
+            if (result == 6) {
+                this.sendCommand(data, (res) => {
+                    if (res == 6)
+                        Common.Logger.info('time successfully changed');
+                });
+            }
+        });
+
+    }
+
+    pauseLoop(secs, cb) {
         this.pauseTimer = secs;
         setTimeout(() => {
             this.pauseTimer = 0; if (cb) cb();
@@ -381,20 +411,45 @@ export default class VantageWs  {
     }
 
     emit(name: string, obj: any) {
-        this.eventEmitter.emit(name, obj);
+        try {
+            this.eventEmitter.emit(name, obj);
+        }
+        catch (e) {
+            Common.Logger.error(e);
+        }
     }
 
     onCurrent(listener: any) {
-        this.eventEmitter.on('current', listener);
+        try {
+            this.eventEmitter.on('current', listener);
+        }
+        catch (e) {
+            Common.Logger.error(e);
+        }
     }
     onHighLow(listener: any) {
-        this.eventEmitter.on('hilows', listener);
+        try {
+            this.eventEmitter.on('hilows', listener);
+        }
+        catch (e) {
+            Common.Logger.error(e);
+        }
     }
     onAlert(listener: any) {
-        this.eventEmitter.on('alert', listener);
+        try {
+            this.eventEmitter.on('alert', listener);
+        }
+        catch (e) {
+            Common.Logger.error(e);
+        }
     }
     onHistory(listener: any) {
-        this.eventEmitter.on('history', listener);
+        try {
+            this.eventEmitter.on('history', listener);
+        }
+        catch (e) {
+            Common.Logger.error(e);
+        }
     }
 
 }

@@ -6,7 +6,7 @@ var mongo = new MongoDB(config);
 import QueryEngine from './QueryEngine';
 mongo.connect().then(connected=> {
     var db = mongo.db;
-    mongo.find('archive', { _id: 1500174900 }).then((res) => {
+    mongo.find('archive', { _id: 1500174900 }).next().then((res) => {
         console.log(res);
     })
     //db.collection('archive').deleteMany({});

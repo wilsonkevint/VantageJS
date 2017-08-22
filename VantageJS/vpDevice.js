@@ -20,7 +20,7 @@ class VPDevice {
         }
         catch (e) {
             Common.Logger.error('VPDevice:' + e);
-            process.exit(-1);
+            //process.exit(-1);
         }
         this.port.on('open', data => {
             if (this.onOpen)
@@ -33,7 +33,7 @@ class VPDevice {
         this.port.on('error', err => {
             this.errorReceived(err);
             Common.Logger.error(err.message);
-            process.exit(-1);
+            //process.exit(-1);
         });
         this.port.on('data', (data) => {
             this.serialData = data;

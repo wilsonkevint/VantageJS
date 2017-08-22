@@ -24,6 +24,7 @@ export default class CWOP {
         this.client = new net.Socket();
        
         var promise = new Promise((resolve, reject) => {
+            try {
                 this.client.connect(14580, 'cwop.aprs.net', () => {
                     console.log('Connected to cwop');
                     this.client.write('user ' + this.config.CWOPId + ' pass -1 vers VantageJS 1.0\r\n');            //login to cwop
@@ -36,11 +37,19 @@ export default class CWOP {
                     }
                 });
 
+                this.client.on('error', error => {
+                    reject(error);
+                });
+
                 this.client.on('close', () => {
                     console.log('cwop Connection closed');
                     if (!this.cwopUpdated)
-                        reject();
+                        reject('cwop not updated');
                 });
+            }
+            catch (e) {
+                Common.Logger.error(e);
+            }
             
         });
 
@@ -50,7 +59,7 @@ export default class CWOP {
 
     dataReceived(data) {
         var resp = String.fromCharCode.apply(null, data);
-        var timeStr = moment.utc().format('DDHHmm');
+        var timeStr = this.current.wuUpdated.utc().format('DDHHmm');
         var Util = Common.Util;
         
         if (resp.indexOf('logresp') > -1) {

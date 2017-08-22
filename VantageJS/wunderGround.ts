@@ -1,6 +1,7 @@
 ﻿declare function require(name: string);
 const moment = require('moment');
 const http = require('http');
+const process = require('process');
 import WebRequest from './WebRequest';
 import WeatherAlert from './WeatherAlert';
 import VPCurrent from './VPCurrent';
@@ -81,31 +82,38 @@ export default class Wunderground {
                 response.on('data', chunk => {    
                     var resultData = String.fromCharCode.apply(null, chunk);
                    
-                    var timeStamp = current.wuUpdated.unix();
+                    var timeStamp = current.wuUpdated.unix(); 
 
-                    this.mongo.update('wuUpdated', { _id: 1, lastUpdate: timeStamp }, true).then(() => {
-                    }, err => {
-                        Common.Logger.error(err);
-                    });
+                    if (resultData.startsWith('success')) {
+                        this.mongo.find('wuUpdated', { _id: 1 }).next().then(wuUpd => {
+                            if (wuUpd.lastUpdate < timeStamp) {
+                                this.mongo.update('wuUpdated', { _id: 1, lastUpdate: timeStamp }, true).then(() => {
+                                }, err => {
+                                    Common.Logger.error(err);
+                                    process.exit(-1);
+                                });
+                            }
+                        });
+                    }
                 });
                 response.on('timeout', socket => {
-                    Common.Logger.error('upload resp timeout');
+                    Common.Logger.error('wu.upload resp timeout');
                 });
                 response.on('error', err => {
-                    Common.Logger.error('upload resp error' + err);
+                    Common.Logger.error('wu.upload resp error' + err);
                 });
             });
             request.on('error', err => {
-                Common.Logger.error('upload error ' + err);
+                Common.Logger.error('wu.upload error ' + err);
             });
             request.setTimeout(30000, () => {
-                Common.Logger.error('upload timeout');
+                Common.Logger.error('wu.upload timeout');
             });
             request.end();
            
         }
         catch (ex) {
-            Common.Logger.error('upload exception');
+            Common.Logger.error('wu.upload exception');
             Common.Logger.error(ex.toString());
         }
     }

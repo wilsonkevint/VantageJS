@@ -31,7 +31,7 @@ import * as Common from './Common';
             }
             catch (e) {
                 Common.Logger.error('VPDevice:' + e);
-                process.exit(-1);
+                //process.exit(-1);
             }
 
             this.port.on('open',data => {
@@ -47,7 +47,7 @@ import * as Common from './Common';
             this.port.on('error',err => {
                 this.errorReceived(err); 
                 Common.Logger.error(err.message);
-                process.exit(-1);
+                //process.exit(-1);
             });
 
             this.port.on('data', (data: Uint8Array) => {

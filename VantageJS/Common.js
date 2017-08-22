@@ -14,6 +14,8 @@ class Util {
         if (!decimals) {
             decimals = 0;
         }
+        if (nbr == null || nbr == undefined)
+            return null;
         return parseFloat(nbr.toFixed(decimals));
     }
 }
@@ -24,13 +26,15 @@ class Logger {
         Logger.winston.add(Logger.winston.transports.File, { filename: filename });
     }
     static info(...args) {
-        Logger.winston.log('info', args);
+        var dt = moment().format('MM/DD HH:mm:ss');
+        Logger.winston.log('info', dt, args);
     }
     static warn(...args) {
         Logger.winston.log('warn', args);
     }
     static error(...args) {
-        Logger.winston.log('error', args);
+        var dt = moment().format('MM/DD HH:mm:ss');
+        Logger.winston.log('error', dt, args);
     }
     static debug(...args) {
         Logger.winston.log('debug', args);

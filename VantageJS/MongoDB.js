@@ -23,36 +23,58 @@ class MongoDB {
         });
         return promise;
     }
-    find(name, criteria) {
-        return this.db.collection(name).find(criteria).next();
+    find(collname, criteria) {
+        return this.db.collection(collname).find(criteria);
     }
-    sort(name, criteria, sortby) {
-        return this.db.collection(name).find(criteria).sort(sortby);
+    sort(collname, criteria, sortby) {
+        return this.db.collection(collname).find(criteria).sort(sortby);
     }
-    insert(name, obj) {
-        return this.db.collection(name).insert(obj);
+    insert(collname, obj) {
+        return this.db.collection(collname).insert(obj);
     }
-    sum(name, fld, criteria, fn) {
-        return this.db.collection(name).aggregate([
-            { $match: criteria },
-            {
-                $group: {
-                    _id: '',
-                    total: {
-                        $sum: "$rainClicks"
-                    }
-                }
+    delete(collname, obj) {
+        return this.db.collection(collname).deleteOne(obj);
+    }
+    sum(collname, fld, criteria, fn) {
+        return this.groupSum(collname, fld, '', criteria, fn);
+    }
+    groupSum(collname, fld, groupBy, criteria, fn, sortOrder) {
+        var group = {
+            $group: {
+                _id: groupBy
             }
+        };
+        if (Array.isArray(fld)) {
+            fld.forEach(f => {
+                group.$group[f] = { $sum: '$' + f };
+            });
+        }
+        else {
+            group.$group[fld] = { $sum: '$' + fld };
+        }
+        var so;
+        if (sortOrder == undefined)
+            so = 1;
+        else
+            so = sortOrder == 'a' ? 1 : -1;
+        var sortBy = { $sort: { _id: so } };
+        return this.db.collection(collname).aggregate([
+            { $match: criteria },
+            group,
+            sortBy
         ], fn);
     }
-    update(name, obj, upsert) {
-        return this.db.collection(name).update({ _id: obj._id }, obj, { upsert: upsert });
+    update(collname, obj, upsert) {
+        return this.db.collection(collname).update({ _id: obj._id }, obj, { upsert: upsert });
     }
-    getLast(name) {
-        return this.db.collection(name).find().sort({ "_id": -1 }).limit(1).next();
+    getLast(collname) {
+        return this.db.collection(collname).find().sort({ "_id": -1 }).limit(1).next();
     }
-    getLastRecs(name, recs) {
-        return this.db.collection(name).find().sort({ "_id": -1 }).limit(recs);
+    getFirst(collname) {
+        return this.db.collection(collname).find().sort({ "_id": 1 }).limit(1).next();
+    }
+    getLastRecs(collname, recs) {
+        return this.db.collection(collname).find().sort({ "_id": -1 }).limit(recs);
     }
 }
 exports.default = MongoDB;

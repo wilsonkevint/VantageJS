@@ -6,7 +6,7 @@ const config = require('./VantageJS.json');
 var mongo = new MongoDB_1.default(config);
 mongo.connect().then(connected => {
     var db = mongo.db;
-    mongo.find('archive', { _id: 1500174900 }).then((res) => {
+    mongo.find('archive', { _id: 1500174900 }).next().then((res) => {
         console.log(res);
     });
     //db.collection('archive').deleteMany({});

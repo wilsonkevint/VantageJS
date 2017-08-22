@@ -5,6 +5,8 @@ class VPArchive extends VPBase_1.default {
     constructor(data, index) {
         super(data);
         this.dataIndx = index + 1;
+        if (data == null)
+            return;
         if (this.peek(0) != 255) {
             var archDateTime = this.nextDateTime();
             if (archDateTime) {

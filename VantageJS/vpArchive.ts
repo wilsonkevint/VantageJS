@@ -4,6 +4,8 @@ export default class VPArchive extends VPBase {
     constructor(data: Uint8Array, index:number) {
         super(data);
         this.dataIndx = index + 1;
+        if (data == null)
+            return;
 
         if (this.peek(0) != 255) {
 
@@ -36,7 +38,7 @@ export default class VPArchive extends VPBase {
         
     }
 
-    archiveDate: Date;
+    archiveDate: string;
     archiveTime: string;
     outTemp: number;
     outTempHi: number;
