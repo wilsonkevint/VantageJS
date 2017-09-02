@@ -7,7 +7,8 @@ import VantageWs from './VantageWS';
 export default class WebServer {
     config:any;
     server:any;
-    io:any;
+    io: any;
+    socket: any;
     ws:VantageWs;
 
      constructor(config, ws:VantageWs) {
@@ -17,11 +18,12 @@ export default class WebServer {
 
     start() {
          this.server = http.createServer((req,res)=> {this.requestReceived(req,res)});
-        //var io = require('socket.io-client');
-        this.io = require('socket.io')(this.server);        
+        this.io = require('socket.io-client');
+        //this.io = require('socket.io')(this.server);        
         this.server.listen(this.config.webPort);
         Common.Logger.info('web server listening ' + this.config.webPort);
-        this.webSocket();
+        //this.webSocket();
+        this.socket = this.clientSocket();
 
         this.ws.onCurrent(current => {
             this.emit('current', current);
@@ -142,32 +144,7 @@ export default class WebServer {
                 }
 
             }
-            else if (req.url.indexOf('alexa') > -1) {
-                res.writeHead(200, { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': allowOrigins });
-                try {
-                    var obj = {
-                        humidity: this.ws.current.humidity.toFixed(0),
-                        dewpoint: this.ws.current.dewpoint.toFixed(0),
-                        barometer: this.ws.current.barometer + ' ' + this.ws.current.barometerTrend,
-                        wind: this.ws.current.windAvg + ' from ' + this.ws.current.windDirection,
-                        forecast: this.ws.forecast.periods[0].fcttext,
-                        sunrise: this.ws.current.sunrise,
-                        sunset: this.ws.current.sunset,
-                        alerts: this.ws.alerts.length ? this.ws.alerts[0].message : 'none'
-                    }
-
-                    obj["inside temperature"] = this.ws.current.inTemperature.toFixed(0);
-                    obj["temperature"] = this.ws.current.temperature.toFixed(0);
-                    obj["rain rate"] = this.ws.current.rainRate.toFixed(0);
-                    obj["rain today"] = this.ws.current.dayRain.toFixed(0);
-                    obj["storm rain"] = this.ws.current.stormRain.toFixed(0);
-                    obj["month rain"] = this.ws.current.monthRain.toFixed(0);
-                    res.end(JSON.stringify(obj));
-                }
-                catch (ex) {
-                    res.end("error");
-                }
-            }
+           
             else if (req.url == '/phone') {
                 var body = '';
                 req.on('data', data => {
@@ -221,41 +198,42 @@ export default class WebServer {
         return data;
     }
 
-    webSocket() {
-        this.io.on('connection', (socket) => {
-            try {
-                Common.Logger.info('socket connection from:' + socket.request.connection.remoteAddress)
-                //Common.Logger.info(socket.request.headers);
+    //webSocket() {
+    //    this.io.on('connection', (socket) => {
+    //        try {
+    //            Common.Logger.info('socket connection from:' + socket.request.connection.remoteAddress)
+    //            //Common.Logger.info(socket.request.headers);
 
-                if (this.ws.current)
-                    socket.emit('current', JSON.stringify(this.ws.current));
+    //            if (this.ws.current)
+    //                socket.emit('current', JSON.stringify(this.ws.current));
 
-                if (this.ws.hilows)
-                    socket.emit('hilows', JSON.stringify(this.ws.hilows));
+    //            if (this.ws.hilows)
+    //                socket.emit('hilows', JSON.stringify(this.ws.hilows));
 
-                if (this.ws.alerts)
-                    socket.emit('alerts', JSON.stringify(this.ws.alerts));
+    //            if (this.ws.alerts)
+    //                socket.emit('alerts', JSON.stringify(this.ws.alerts));
 
-                socket.on('hilows', (data) => {
-                    Common.Logger.info('hilows req');
-                    socket.emit('hilows', JSON.stringify(this.ws.hilows));
-                });
+    //            socket.on('hilows', (data) => {
+    //                Common.Logger.info('hilows req');
+    //                socket.emit('hilows', JSON.stringify(this.ws.hilows));
+    //            });
 
-                socket.on('message',
-                    (msgtype, msg) => {
-                        this.io.sockets.emit('message', msg);
-                    });
-            }
-            catch (e) {
-                Common.Logger.error('webSocket:' + e);
-            }
+    //            socket.on('message',
+    //                (msgtype, msg) => {
+    //                    this.io.sockets.emit('message', msg);
+    //                });
+    //        }
+    //        catch (e) {
+    //            Common.Logger.error('webSocket:' + e);
+    //        }
 
-        });
-    }
+    //    });
+    //}
 
     emit(name, obj) {
         try {
-            this.io.sockets.emit(name, JSON.stringify(obj));
+            //this.io.sockets.emit(name, JSON.stringify(obj));
+            this.socket.emit(name, JSON.stringify(obj));
         }
         catch (e) {
             Common.Logger.error('WebServer.emit' + e);
@@ -263,12 +241,13 @@ export default class WebServer {
     }
 
     clientSocket() {   
+        /* for logging in and getting a token
         var post_data = JSON.stringify({client:'weathervsw'});
         var token = '';
 
         var request = http.request({
-            host: 'rpizero',
-            port: '9002',
+            host: 'localhost',
+            port: '9000',
             path: '/login',
             method: 'POST',
             headers: {
@@ -280,28 +259,22 @@ export default class WebServer {
                 token += chunk;
             })
             resp.on('end', () => {
-                var socket = this.io('http://rpizero:9002');
-
-                socket.on('connect', () => {
-                    Common.Logger.info('connected');
-                    socket
-                        .emit('authenticate', { token: token })
-                        .on('authenticated', () => {
-                            Common.Logger.info('authenticated');
-                            socket.on('current', (x) => {
-                                socket.emit('oncurrent', this.ws.current);
-                            });
-                        })
-                        .on('unauthorized', (msg) => {
-                            Common.Logger.info("unauthorized: " + JSON.stringify(msg.data));                     
-                        })
+        */
+        var socket = this.io(this.config.socketUrl, { query: {client:"vantagejs"}});
+        
+        socket.on('connect', () => {
+            Common.Logger.info('socket connected');
+            if (this.ws.hilows) {
+                this.emit('hilows', this.ws.hilows);
+            }
                    
-                });
-            });
-        }
-        );
+        });
 
-        request.write(post_data);
-        request.end();
+        return socket;                  
+            //});
+        //}
+        //);
+
+        
     }
 }

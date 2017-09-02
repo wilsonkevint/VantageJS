@@ -1,0 +1,14 @@
+{
+  "name": "socket-server",
+  "version": "0.0.0",
+  "description": "SocketServer",
+  "main": "app.js",
+  "author": {
+    "name": "wilsoadmin"
+  },
+  "dependencies": {
+    "@types/node": "^8.0.24",
+    "moment": "^2.18.1",
+    "socket.io": "^2.0.3"
+  }
+}

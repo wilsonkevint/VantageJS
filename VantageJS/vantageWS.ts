@@ -42,18 +42,20 @@ export default class VantageWs  {
 
     init() {
         var promise = new Promise((resolve, reject) => {
-            this.mongo.connect().then(() => {
-                this.queryEngine = new QueryEngine(this.config, this.mongo);
-                if (this.config.runVWS == "1") {
-                    var comPort = this.config[os.platform() + '_serialPort'];
-                    this.device = new VPDevice(comPort);
-                    this.device.onOpen = () => {
-                        this.isActive = true;
-                        resolve();
+            setTimeout(() => {
+                this.mongo.connect().then(() => {
+                    this.queryEngine = new QueryEngine(this.config, this.mongo);
+                    if (this.config.runVWS == "1") {
+                        var comPort = this.config[os.platform() + '_serialPort'];
+                        this.device = new VPDevice(comPort);
+                        this.device.onOpen = () => {
+                            this.isActive = true;
+                            resolve();
+                        }
                     }
-                }
-                
-            },err=>reject(err));
+
+                }, err => reject(err));
+            },5000);
         });
         return promise;
     }

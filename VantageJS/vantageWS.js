@@ -22,17 +22,19 @@ class VantageWs {
     }
     init() {
         var promise = new Promise((resolve, reject) => {
-            this.mongo.connect().then(() => {
-                this.queryEngine = new QueryEngine_1.default(this.config, this.mongo);
-                if (this.config.runVWS == "1") {
-                    var comPort = this.config[os.platform() + '_serialPort'];
-                    this.device = new VPDevice_1.default(comPort);
-                    this.device.onOpen = () => {
-                        this.isActive = true;
-                        resolve();
-                    };
-                }
-            }, err => reject(err));
+            setTimeout(() => {
+                this.mongo.connect().then(() => {
+                    this.queryEngine = new QueryEngine_1.default(this.config, this.mongo);
+                    if (this.config.runVWS == "1") {
+                        var comPort = this.config[os.platform() + '_serialPort'];
+                        this.device = new VPDevice_1.default(comPort);
+                        this.device.onOpen = () => {
+                            this.isActive = true;
+                            resolve();
+                        };
+                    }
+                }, err => reject(err));
+            }, 5000);
         });
         return promise;
     }

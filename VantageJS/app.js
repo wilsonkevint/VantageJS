@@ -16,7 +16,7 @@ vws.init().then(() => {
     if (config.runVWS == "1") {
         vws.start();
     }
-});
+}, err => Common.Logger.error('.init', err));
 const svr = new WebServer_1.default(config, vws);
 svr.start();
 rl.question('', reply => {
