@@ -30,6 +30,7 @@ class WebServer {
         Common.Logger.info('WebRequest ' + moment().format('hh:mm:ss'));
         var allowOrigins = this.config.allowOrigins[0];
         var origin = req.headers.origin;
+        console.log('origin:' + origin);
         var allowOrigin = this.config.allowOrigins.filter(o => {
             if (o.includes(origin))
                 return true;
@@ -137,7 +138,7 @@ class WebServer {
                     res.end(JSON.stringify(this.ws.current));
                 }
                 else {
-                    res.writeHead(200);
+                    res.writeHead(200, { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': allowOrigins });
                     res.end("no data");
                 }
             }

@@ -2,6 +2,7 @@
 const moment = require('moment');
 const http = require('http');
 const os = require('os');
+const emailjs = require('emailjs');
 import VPDevice from './VPDevice';
 import VPCurrent from './VPCurrent';
 import VPHiLow from './VPHiLow';
@@ -53,6 +54,8 @@ export default class VantageWs  {
                             resolve();
                         }
                     }
+                    else
+                        resolve();
 
                 }, err => reject(err));
             },5000);
@@ -60,10 +63,24 @@ export default class VantageWs  {
         return promise;
     }
 
-    start() {    
-        this.getAlerts();        
+    start() {
+        this.sendEmail('VantageJS app started');
 
-        this.hiLowArchive();
+        this.getAlerts();      
+
+        this.getTime(dt => {
+            if (VPBase.timeDiff(dt, 's') > 10) {
+                this.setTime().then(() => {
+                    this.hiLowArchive();
+                });
+            }
+            else {
+                this.hiLowArchive();
+            }
+        });
+       
+
+       
 
         this.loopTimer = setInterval(() => {
             var lastHiLow = null;
@@ -264,13 +281,25 @@ export default class VantageWs  {
     }    
 
     getArchives(startDate) {       
+        var tries = 3;
         var promise = new Promise((resolve, reject) => {
-            this.device.getArchived(startDate).then((archives: Array<VPArchive>) => {             
-                resolve(archives);
-            }, err => {
-                Common.Logger.error('getArchives', err);
-                reject(err);
-            });
+            var getArchive = () => {
+                this.device.getArchived(startDate).then((archives: Array<VPArchive>) => {
+                    resolve(archives);
+                }, err => {
+                    if (tries > 0) {
+                        console.log('getArchives retry due to ', err);
+                        getArchive();
+                        tries--;
+                    }
+                    else {
+                        Common.Logger.error('getArchives', err);
+                        reject(err);
+                    }
+                });
+            }
+
+            getArchive();
         });
 
         return promise;
@@ -348,7 +377,7 @@ export default class VantageWs  {
         }, 60000 * 15);
     }    
      
-    sendCommand(cmd, callback) {
+    sendCommand(cmd, callback, binres?:boolean) {
 
         this.pauseLoop(2, () => {
             this.device.isAvailable().then(() => {
@@ -357,8 +386,13 @@ export default class VantageWs  {
 
                     this.device.getSerial(cmd + '\n', 1, false).then(data => {
                         var result = '';
-                        for (var i in data) {
-                            result += String.fromCharCode(data[i]);
+                        if (!binres) {
+                            for (var i in data) {
+                                result += String.fromCharCode(data[i]);
+                            }
+                        }
+                        else {
+                            result = data;
                         }
                         callback(result);
 
@@ -372,29 +406,57 @@ export default class VantageWs  {
     }
 
     getTime(cb) {
-        this.sendCommand("GETTIME", cb);
+        this.sendCommand("GETTIME", res => {
+            if (res[0] == 6) {
+                res.splice(0, 1);
+            }
+            var secs = res[0];
+            var mins = res[1];
+            var hrs = res[2];
+            var day = res[3];
+            var mon = res[4];
+            var yr = res[5] + 1900;
+            var crc = res.splice(6, 2);
+            if (crc.join('') == VPDevice.getCRC(res).join('')) {
+                var dt = new Date(yr, mon - 1, day, hrs, mins, secs);
+                cb(dt);
+            }
+            else
+                cb(null);
+           
+        },true);
     }
 
     setTime() {
-        var data = [6];
-        var now = new Date();
-        data[0] = now.getSeconds();
-        data[1] = now.getMinutes();
-        data[2] = now.getHours();
-        data[3] = now.getDate() + 1;
-        data[4] = now.getMonth() + 1;
-        data[5] = now.getFullYear() - 1900;
-        var crc = VPDevice.getCRC(data);
-        data.push(crc);
-       
-        this.sendCommand("SETTIME", (result) => {
-            if (result == 6) {
-                this.sendCommand(data, (res) => {
-                    if (res == 6)
-                        Common.Logger.info('time successfully changed');
-                });
-            }
+        var promise = new Promise((resolve, reject) => {
+            var data = [6];
+            var now = new Date();
+            data[0] = now.getSeconds();
+            data[1] = now.getMinutes();
+            data[2] = now.getHours();
+            data[3] = now.getDate();
+            data[4] = now.getMonth() + 1;
+            data[5] = now.getFullYear() - 1900;
+            var crc = VPDevice.getCRC(data);
+            Array.prototype.push.apply(data,crc);
+
+            this.sendCommand("SETTIME", (result) => {
+                if (result[0] == 6) {
+                    this.device.getSerial(data,1,true).then(res => {
+                        if (res[0] == 6) {
+                            Common.Logger.info('time successfully changed');
+                        }
+                        resolve();
+                    },true);
+                }
+                else {
+                    Common.Logger.info('time successfully not changed');
+                    resolve();
+                }
+            },true);
         });
+
+        return promise;
 
     }
 
@@ -411,6 +473,32 @@ export default class VantageWs  {
             this.pauseTimer = 0;
         }
     }
+
+    sendEmail(msg) {
+        try {
+            if (this.config.smtpServer) {
+                var mailsrv = emailjs.server.connect({
+                    host: this.config.smtpServer,
+                    ssl: false
+                });
+
+                var message = {
+                    text: msg,
+                    from: this.config.emailFrom,
+                    to: this.config.emailTo,
+                    subject: 'VantageJS'
+                }
+
+
+                mailsrv.send(message, (err, msg) => {
+                    //console.log(err || msg);
+                });
+            }
+        }
+        catch (e) {
+            console.log('sendEmail ' + e);
+        }
+}
 
     emit(name: string, obj: any) {
         try {

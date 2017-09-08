@@ -99,7 +99,7 @@ import * as Common from './Common';
 
                     if (received.length >= reqchars) {
                         VPDevice.isBusy = false;
-                        resolve(received);
+                        resolve(received)
                     }        
                 }
 
@@ -128,16 +128,17 @@ import * as Common from './Common';
 
                 this.sendArchiveCmd(cmd).then(result => {
                     if (cmd == 'DMPAFT') {
-                        var ts = this.getArchiveTS(startDate);
+                        var ts = VPDevice.getArchiveTS(startDate);
+                        
                         this.getSerial(ts, 6, true).then(data => {
 
                             this.retrieveArchive(data,false, (archives) => {
                                 resolve(archives);
                             });
                         },
-                            err => {                   
-                                reject();
-                                Common.Logger.error('getArchived error');
+                        err => {                   
+                            reject();
+                            Common.Logger.error('getArchived error');
                         });                               
                     }
                     else {
@@ -174,7 +175,7 @@ import * as Common from './Common';
 
         
 
-        getArchiveTS(startDate: string) {            
+        static getArchiveTS(startDate: string) {            
             var stamp = VPBase.getDateTimeStamp(startDate);
             var crcTS = VPDevice.getCRC(stamp);
             var buffer = [];  

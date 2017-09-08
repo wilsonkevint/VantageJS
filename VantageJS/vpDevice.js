@@ -97,7 +97,7 @@ class VPDevice {
         var promise = new Promise((resolve, reject) => {
             this.sendArchiveCmd(cmd).then(result => {
                 if (cmd == 'DMPAFT') {
-                    var ts = this.getArchiveTS(startDate);
+                    var ts = VPDevice.getArchiveTS(startDate);
                     this.getSerial(ts, 6, true).then(data => {
                         this.retrieveArchive(data, false, (archives) => {
                             resolve(archives);
@@ -131,7 +131,7 @@ class VPDevice {
             }, rj);
         });
     }
-    getArchiveTS(startDate) {
+    static getArchiveTS(startDate) {
         var stamp = VPBase_1.default.getDateTimeStamp(startDate);
         var crcTS = VPDevice.getCRC(stamp);
         var buffer = [];

@@ -114,7 +114,7 @@ export default class QueryEngine {
         var promise = new Promise((resolve, reject) => {
             try {
                 this.mongo.sum('archive', 'rainClicks', { _id: { $gte: yday } }, (err, res) => {
-                    if (!err) {
+                    if (!err && res && res.length) {
                         tot24rain = res[0].rainClicks;
                     }
                     else {
@@ -123,7 +123,7 @@ export default class QueryEngine {
                     }
 
                     this.mongo.sum('archive', 'rainClicks', { _id: { $gte: hourAgo } }, (err, hrly) => {
-                        if (!err) {
+                        if (!err && hrly && hrly.length) {
                             hourlyrain = hrly[0].rainClicks;
                             resolve({ last24: tot24rain, hourly: hourlyrain });
                         }
