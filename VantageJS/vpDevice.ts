@@ -63,7 +63,7 @@ import * as Common from './Common';
         }
      
 
-        readLoop(loops: number, callback: any): any {
+        writeLoop(loops: number, callback: any): any {
             this.dataReceived = callback;           
             this.port.write('LOOP ' + loops.toString() + '\n');
         }       
@@ -149,11 +149,8 @@ import * as Common from './Common';
                    
                 });     
             });
-                            
-               
 
             return promise;
-
         }       
 
         sendArchiveCmd(cmd) {
@@ -246,12 +243,8 @@ import * as Common from './Common';
                     }
 
                 }
-            }
-
-           
+            }           
         }
- 
-
 
         static crc_table = [
             0x0, 0x1021, 0x2042, 0x3063, 0x4084, 0x50a5, 0x60c6, 0x70e7,
@@ -317,12 +310,7 @@ import * as Common from './Common';
            
             var attempts = 0; 
             
-            var promise = new Promise((resolve, reject) => {
-                //if (this.lastActv) {
-                //    var diff = VPBase.timeDiff(this.lastActv, 's');
-                //    if (diff < 11)
-                //        resolve(true);
-                //} 
+            var promise = new Promise((resolve, reject) => {               
                 VPDevice.isBusy = true; 
 
                 this.dataReceived = () => {

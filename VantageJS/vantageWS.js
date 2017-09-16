@@ -45,43 +45,33 @@ class VantageWs {
         this.sendEmail('VantageJS app started');
         this.getAlerts();
         this.getTime(dt => {
-            if (VPBase_1.default.timeDiff(dt, 's') > 10) {
-                this.setTime().then(() => {
-                    this.hiLowArchive();
-                });
+            if (dt) {
+                if (Math.abs(VPBase_1.default.timeDiff(dt, 's')) > 10) {
+                    this.setTime();
+                }
             }
-            else {
-                this.hiLowArchive();
-            }
+            else
+                Common.Logger.error('getTime failed');
         });
-        this.loopTimer = setInterval(() => {
-            var lastHiLow = null;
-            if (this.hilows) {
-                lastHiLow = VPBase_1.default.timeDiff(this.hilows.dateLoaded, 's');
-            }
-            if (!this.pauseTimer) {
-                if (lastHiLow >= 300) {
-                    this.hiLowArchive();
-                }
-                else {
-                    if (this.current == null || VPBase_1.default.timeDiff(this.current.dateLoaded, 's') > 4) {
-                        this.startLoop();
-                    }
-                }
-            }
-        }, this.config.loopTimer * 1000);
+        setTimeout(() => this.hiLowArchive(), 3000);
+        this.hilowInterval = setInterval(() => this.hiLowArchive(), this.config.hilowInterval);
+        this.loopInterval = setInterval(() => this.startLoop(), this.config.loopInterval);
     }
     startLoop() {
-        this.device.isAvailable().then(() => {
-            this.device.wakeUp().then(result => {
-                this.device.readLoop(99, () => {
-                    this.processLoop();
-                });
-            }, VantageWs.deviceError);
-        }, VantageWs.deviceError);
+        if (!this.pauseTimer) {
+            if (this.current == null || VPBase_1.default.timeDiff(this.current.dateLoaded, 's') > 5) {
+                this.device.isAvailable().then(() => {
+                    this.device.wakeUp().then(result => {
+                        this.device.writeLoop(99, () => {
+                            this.processLoop();
+                        });
+                    }, VantageWs.deviceError);
+                }, VantageWs.deviceError);
+            }
+        }
     }
     stop() {
-        clearInterval(this.loopTimer);
+        clearInterval(this.loopInterval);
         this.device.wakeUp(); //clear loop
     }
     processLoop() {
@@ -97,7 +87,7 @@ class VantageWs {
         }
     }
     hiLowArchive() {
-        this.pauseLoop(180, null);
+        this.pauseLoop(180);
         this.getHiLows(() => {
             this.updateArchives().then(() => {
                 this.clearPause();
@@ -127,7 +117,7 @@ class VantageWs {
             this.mongo.getLast('archive').then((last) => {
                 var lastDt = last ? last.archiveDate + ' ' + last.archiveTime : null;
                 var lastId = last ? last._id : 0;
-                this.getArchives(lastDt).then((archives) => {
+                this.device.getArchived(lastDt).then((archives) => {
                     try {
                         archives.forEach((a) => {
                             a._id = moment(a.archiveDate + ' ' + a.archiveTime, 'MM/DD/YYYY HH:mm').unix();
@@ -283,23 +273,22 @@ class VantageWs {
         }, 60000 * 15);
     }
     sendCommand(cmd, callback, binres) {
-        this.pauseLoop(2, () => {
-            this.device.isAvailable().then(() => {
-                this.device.wakeUp().then(result => {
-                    this.device.getSerial(cmd + '\n', 1, false).then(data => {
-                        var result = '';
-                        if (!binres) {
-                            for (var i in data) {
-                                result += String.fromCharCode(data[i]);
-                            }
+        this.pauseLoop(2, null);
+        this.device.isAvailable().then(() => {
+            this.device.wakeUp().then(result => {
+                this.device.getSerial(cmd + '\n', 1, false).then(data => {
+                    var result = '';
+                    if (!binres) {
+                        for (var i in data) {
+                            result += String.fromCharCode(data[i]);
                         }
-                        else {
-                            result = data;
-                        }
-                        callback(result);
-                    }, this.errorHandler);
+                    }
+                    else {
+                        result = data;
+                    }
+                    callback(result);
                 }, this.errorHandler);
-            });
+            }, this.errorHandler);
         });
     }
     getTime(cb) {
@@ -323,37 +312,31 @@ class VantageWs {
         }, true);
     }
     setTime() {
-        var promise = new Promise((resolve, reject) => {
-            var data = [6];
-            var now = new Date();
-            data[0] = now.getSeconds();
-            data[1] = now.getMinutes();
-            data[2] = now.getHours();
-            data[3] = now.getDate();
-            data[4] = now.getMonth() + 1;
-            data[5] = now.getFullYear() - 1900;
-            var crc = VPDevice_1.default.getCRC(data);
-            Array.prototype.push.apply(data, crc);
-            this.sendCommand("SETTIME", (result) => {
-                if (result[0] == 6) {
-                    this.device.getSerial(data, 1, true).then(res => {
-                        if (res[0] == 6) {
-                            Common.Logger.info('time successfully changed');
-                        }
-                        resolve();
-                    }, true);
-                }
-                else {
-                    Common.Logger.info('time successfully not changed');
-                    resolve();
-                }
-            }, true);
-        });
-        return promise;
+        var data = [6];
+        var now = new Date();
+        data[0] = now.getSeconds();
+        data[1] = now.getMinutes();
+        data[2] = now.getHours();
+        data[3] = now.getDate();
+        data[4] = now.getMonth() + 1;
+        data[5] = now.getFullYear() - 1900;
+        var crc = VPDevice_1.default.getCRC(data);
+        Array.prototype.push.apply(data, crc);
+        this.sendCommand("SETTIME", (result) => {
+            if (result[0] == 6) {
+                this.device.getSerial(data, 1, true).then(res => {
+                    if (res[0] == 6) {
+                        Common.Logger.info('time successfully changed');
+                    }
+                }, true);
+            }
+            else {
+                Common.Logger.info('time successfully not changed');
+            }
+        }, true);
     }
     pauseLoop(secs, cb) {
-        this.pauseTimer = secs;
-        setTimeout(() => {
+        this.pauseTimer = setTimeout(() => {
             this.pauseTimer = 0;
             if (cb)
                 cb();

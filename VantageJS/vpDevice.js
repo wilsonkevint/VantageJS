@@ -44,7 +44,7 @@ class VPDevice {
     errorReceived(err) {
         VPDevice.isBusy = false;
     }
-    readLoop(loops, callback) {
+    writeLoop(loops, callback) {
         this.dataReceived = callback;
         this.port.write('LOOP ' + loops.toString() + '\n');
     }
@@ -209,11 +209,6 @@ class VPDevice {
     wakeUp() {
         var attempts = 0;
         var promise = new Promise((resolve, reject) => {
-            //if (this.lastActv) {
-            //    var diff = VPBase.timeDiff(this.lastActv, 's');
-            //    if (diff < 11)
-            //        resolve(true);
-            //} 
             VPDevice.isBusy = true;
             this.dataReceived = () => {
                 var data = this.serialData;

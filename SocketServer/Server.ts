@@ -19,12 +19,13 @@ export default class Server {
         console.log('web server listening on ' + config.port);
         this.io.on('connection', (socket) => this.onConnection(socket));
         this.wsclients = new Array<any>();
+        this.alerts = [];
     }
 
     onConnection(socket) {
         try {
             console.log('socket connection from:' + socket.request.headers.origin);
-            console.log(socket.request._query);
+            //console.log(socket.request._query);
 
             try {
                 var client = socket.request._query.client;
@@ -40,7 +41,7 @@ export default class Server {
                                 socket.emit('current', this.current);
                             if (this.hilows)
                                 socket.emit('hilows', this.hilows);
-                            if (this.alerts)
+                            if (this.alerts && this.alerts.length)
                                 socket.emit('alerts', this.alerts);
                         }
                     }
@@ -53,8 +54,7 @@ export default class Server {
             }
 
             socket.on('current', (current) => {
-                //console.log('current', current);
-               
+                            
                 this.lastContact = new Date();
                 if (socket == this.vwsSocket) {
                     this.current = typeof current == 'string' ? JSON.parse(current) : current;
@@ -101,7 +101,7 @@ export default class Server {
     requestReceived(req, res) {
         var allowOrigins = config.allowOrigins[0];
         var origin = req.headers.origin;
-        console.log('origin ' + origin);
+        //console.log('origin ' + origin);
         var allowOrigin = config.allowOrigins.filter(o => {
             if (o.includes(origin))
                 return true;
