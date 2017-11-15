@@ -2,6 +2,7 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 const http = require('http');
 const moment = require('moment');
+const url = require('url');
 const Common = require("./Common");
 class WebServer {
     constructor(config, ws) {
@@ -121,16 +122,12 @@ class WebServer {
                     });
                 }
             }
-            else if (req.url == '/phone') {
-                var body = '';
-                req.on('data', data => {
-                    body += data;
-                });
-                req.on('end', () => {
-                    var msg = JSON.parse(body);
-                    msg.source = 'phone';
-                    this.emit('alert', msg);
-                });
+            else if (req.url == '/schedule') {
+                var urlp = url.parse(req.url);
+                var parm = urlp.query.split('=');
+                var result = '';
+                if (parm.length == 2) {
+                }
             }
             else {
                 if (this.ws.current) {
