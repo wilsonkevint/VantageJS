@@ -59,7 +59,8 @@ export default class Wunderground {
         if (current.wuUpdated == null)
             current.wuUpdated = moment(); 
 
-        var dateutc = current.wuUpdated.utc().format('YYYY-MM-DD HH:mm:ss').replace(' ', '%20');;
+        var dateutc = current.wuUpdated.utc().format('YYYY-MM-DD+HH:mm:ss');
+        dateutc = dateutc.replace(':', '%3a');
 
         var path = eval('`' + config.uploadPath + '`')
             + '&winddir=' + current.windDir + '&windspeedmph=' + current.windAvg
@@ -67,6 +68,7 @@ export default class Wunderground {
             + '&rainin=' + current.rainRate + '&dailyrainin=' + current.dayRain + '&baromin=' + current.barometer
             + '&humidity=' + current.humidity + '&dewptf=' + current.dewpoint
             + '&action=updateraw'
+            + '&softwaretype=custom'
             + '&realtime=1&rtfreq=' + config.updateFrequency;         
 
         var options = {
@@ -76,12 +78,11 @@ export default class Wunderground {
             method: 'get',
             timeout: 4000
         };
-
+        
         try {
             var request = http.request(options, response => {
                 response.on('data', chunk => {    
-                    var resultData = String.fromCharCode.apply(null, chunk);
-                   
+                    var resultData = String.fromCharCode.apply(null, chunk);                    
                     var timeStamp = current.wuUpdated.unix(); 
 
                     if (resultData.startsWith('success')) {
@@ -95,12 +96,14 @@ export default class Wunderground {
                             }
                         });
                     }
+                    else 
+                        Common.Logger.info('wu.upload result:' + resultData);
                 });
                 response.on('timeout', socket => {
                     Common.Logger.error('wu.upload resp timeout');
                 });
                 response.on('error', err => {
-                    Common.Logger.error('wu.upload resp error' + err);
+                    Common.Logger.error('wu.upload resp error ' + err);
                 });
             });
             request.on('error', err => {
