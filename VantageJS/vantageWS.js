@@ -79,6 +79,10 @@ class VantageWs {
         var startx = data.length == 99 ? 0 : 1;
         if (VPDevice_1.default.validateCRC(data, startx)) {
             this.current = new VPCurrent_1.default(data);
+            if (this.vp1Current && VPBase_1.default.timeDiff(this.vp1Current.dateLoaded, 'm') < 6) {
+                console.log('replacing current temp of ' + this.current.temperature + ' with vp1 temp of ' + this.vp1Current.temperature);
+                this.current.temperature = this.vp1Current.temperature;
+            }
             this.wu.upload(this.current);
             this.emit('current', this.current);
             if (this.config.debug) {
@@ -250,7 +254,7 @@ class VantageWs {
         if (this.forecast) {
             last = VPBase_1.default.timeDiff(this.forecast.last, 'h');
         }
-        if (!last || last >= 4) {
+        if (!last || last >= 4 || (this.forecast.periods.length && !this.forecast.periods[0].fcttext)) {
             promise = this.wu.getForecast();
         }
         else {
@@ -378,7 +382,15 @@ class VantageWs {
             Common.Logger.error(e);
         }
     }
-    onCurrent(listener) {
+    subscribeEvent(listener, eventName) {
+        try {
+            this.eventEmitter.on(eventName, listener);
+        }
+        catch (e) {
+            Common.Logger.error(e);
+        }
+    }
+    subscribeCurrent(listener) {
         try {
             this.eventEmitter.on('current', listener);
         }
@@ -386,7 +398,7 @@ class VantageWs {
             Common.Logger.error(e);
         }
     }
-    onHighLow(listener) {
+    subscribeHiLow(listener) {
         try {
             this.eventEmitter.on('hilows', listener);
         }
@@ -394,7 +406,7 @@ class VantageWs {
             Common.Logger.error(e);
         }
     }
-    onAlert(listener) {
+    subscribeAlert(listener) {
         try {
             this.eventEmitter.on('alert', listener);
         }
@@ -402,7 +414,7 @@ class VantageWs {
             Common.Logger.error(e);
         }
     }
-    onHistory(listener) {
+    subscribeHistory(listener) {
         try {
             this.eventEmitter.on('history', listener);
         }

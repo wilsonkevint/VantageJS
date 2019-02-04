@@ -37,6 +37,7 @@ class VPCurrent extends VPBase_1.default {
         this.forecastRule = this.nextByte();
         this.sunrise = this.nextTime();
         this.sunset = this.nextTime();
+        this.windChill = this.fWindChill();
         this.dateLoaded = new Date();
         this._data = null;
     }
@@ -139,6 +140,18 @@ class VPCurrent extends VPBase_1.default {
                 break;
         }
         return forecast;
+    }
+    fWindChill() {
+        let temp = this.temperature;
+        let wind = this.windAvg;
+        let chill = temp;
+        if (wind > 1) {
+            let wp = Math.pow(wind, 0.16);
+            chill = 35.74 + 0.6215 * temp - 35.75 * wp + 0.4275 * temp * wp;
+            if (chill > temp)
+                chill = temp;
+        }
+        return chill;
     }
 }
 exports.default = VPCurrent;

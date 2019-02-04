@@ -306,28 +306,34 @@ import * as Common from './Common';
             return [byte2, byte1];
         }       
 
-        wakeUp(): any {
+        async wakeUp(): Promise<boolean> {
            
             var attempts = 0; 
-            
-            var promise = new Promise((resolve, reject) => {               
+
+            var promise = new Promise <boolean>((resolve, reject) => {               
                 VPDevice.isBusy = true; 
+                var received = 0;
+                var waitintv;
 
                 this.dataReceived = () => {
                     var data = this.serialData;
+                    received = data.length;
+                   
                     if (data.length == 99) {
                         console.log('wakeup got LOOP data');
                     }
                     else {
-                        if (data && data.length == 2 && data[0] == 10 && data[1] == 13) {
+                        if (data && received == 2 && data[0] == 10 && data[1] == 13) {
                             VPDevice.isBusy = false;
-                            this.lastActv = Date()
-                            resolve(true);
+                            this.lastActv = Date();
+                            clearInterval(waitintv);
+                            resolve(true);                            
                         }
                         else {
                             if (attempts > 2) {
                                 VPDevice.isBusy = false;
                                 reject(false);
+                                clearInterval(waitintv);
                             }
                             else  
                                 setTimeout(() => {
@@ -345,7 +351,21 @@ import * as Common from './Common';
                     reject(err);
                 }
 
-                 this.port.write('\n');
+                this.port.write('\n');
+
+                waitintv = setInterval(() => {
+                    if (received == 0) {
+                        attempts++;
+                        if (attempts < 2) {
+                            console.log('retrying wakeup')
+                            this.port.write('\n');
+                        }
+                        else {
+                            clearInterval(waitintv);
+                            reject(false);
+                        }
+                    }
+                }, 10000);
                 
             });
 

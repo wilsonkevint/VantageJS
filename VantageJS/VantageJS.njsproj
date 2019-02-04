@@ -10,8 +10,8 @@
     <TypeScriptModuleKind>CommonJS</TypeScriptModuleKind>
     <Environment>
     </Environment>
-    <ToolsVersionPromptShown>0.0</ToolsVersionPromptShown>
-    <TypeScriptToolsVersion>2.3</TypeScriptToolsVersion>
+    <ToolsVersionPromptShown>2.3</ToolsVersionPromptShown>
+    <TypeScriptToolsVersion>3.1</TypeScriptToolsVersion>
   </PropertyGroup>
   <Import Project="$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props" Condition="Exists('$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props')" />
   <PropertyGroup>
@@ -19,7 +19,7 @@
     <SchemaVersion>2.0</SchemaVersion>
     <ProjectGuid>00140fbe-f484-4813-b14c-6f7b07dfb50a</ProjectGuid>
     <ProjectHome>.</ProjectHome>
-    <StartupFile>app.ts</StartupFile>
+    <StartupFile>dbfix.ts</StartupFile>
     <StartWebBrowser>False</StartWebBrowser>
     <SearchPath>
     </SearchPath>
@@ -59,6 +59,10 @@
   </ItemGroup>
   <ItemGroup>
     <TypeScriptCompile Include="app.ts" />
+    <TypeScriptCompile Include="appzero.ts" />
+    <TypeScriptCompile Include="ClientSocket.ts">
+      <SubType>Code</SubType>
+    </TypeScriptCompile>
     <TypeScriptCompile Include="Common.ts">
       <SubType>Code</SubType>
     </TypeScriptCompile>
@@ -66,6 +70,9 @@
       <SubType>Code</SubType>
     </TypeScriptCompile>
     <TypeScriptCompile Include="cwoptest.ts">
+      <SubType>Code</SubType>
+    </TypeScriptCompile>
+    <TypeScriptCompile Include="dbfix.ts">
       <SubType>Code</SubType>
     </TypeScriptCompile>
     <TypeScriptCompile Include="MongoDB.ts">

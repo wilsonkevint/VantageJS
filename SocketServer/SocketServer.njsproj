@@ -4,8 +4,8 @@
     <VSToolsPath Condition="'$(VSToolsPath)' == ''">$(MSBuildExtensionsPath32)\Microsoft\VisualStudio\v$(VisualStudioVersion)</VSToolsPath>
     <Name>SocketServer</Name>
     <RootNamespace>SocketServer</RootNamespace>
-    <ToolsVersionPromptShown>0.0</ToolsVersionPromptShown>
-    <TypeScriptToolsVersion>2.3</TypeScriptToolsVersion>
+    <ToolsVersionPromptShown>2.3</ToolsVersionPromptShown>
+    <TypeScriptToolsVersion>3.1</TypeScriptToolsVersion>
   </PropertyGroup>
   <Import Project="$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props" Condition="Exists('$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props')" />
   <PropertyGroup>

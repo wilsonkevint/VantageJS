@@ -1,0 +1,15 @@
+{
+  "name": "vantage-lib",
+  "version": "0.0.0",
+  "description": "VantageLib",
+  "main": "app.js",
+  "author": {
+    "name": ""
+  },
+  "devDependencies": {
+    "@types/node": "^8.0.14"
+  },
+  "dependencies": {
+    "moment": "^2.24.0"
+  }
+}

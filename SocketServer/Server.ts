@@ -17,7 +17,9 @@ export default class Server {
   
     start() {
         this.server = http.createServer((req,res)=> {this.requestReceived(req,res)});     
-        this.io = io(this.server);       
+        this.io = io(this.server);
+        this.io.origins = '*';
+        
         
         this.server.listen(config.port);
         console.log('web server listening on ' + config.port);
@@ -31,10 +33,13 @@ export default class Server {
 
     onConnection(socket) {
         try {
-            console.log('socket connection from:' + socket.request.headers.origin);           
+            console.log('socket connection started'); 
+                    
 
             try {
                 var client = socket.request._query.client;
+                console.log('client:' + client);
+
                 if (client == 'vantagejs') {
                     this.vwsSocket = socket;                  
                 }
@@ -89,7 +94,13 @@ export default class Server {
                         client.emit('alerts', alerts);
                     });
                 }
-            });           
+            });         
+
+            socket.on('vp1_current', (current) => {
+                console.log('vp1_current', current);
+                if (this.vwsSocket)
+                    this.vwsSocket.emit('vp1_current', current);
+            });          
 
             socket.on('disconnect', (data) => {
                 for (var i = 0; i < this.wsclients.length; i++) {
@@ -116,9 +127,10 @@ export default class Server {
                 return false;
         });
 
-        if (allowOrigin.length)
+        if (allowOrigin.length) {
             allowOrigins = allowOrigin[0];
-
+        }
+                
         var urlp = url.parse(req.url);
         var cmd = urlp.pathname.split('/');
         cmd = cmd[cmd.length - 1];

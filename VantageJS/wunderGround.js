@@ -43,14 +43,15 @@ class Wunderground {
         var wuPassword = config.wuPassword;
         if (current.wuUpdated == null)
             current.wuUpdated = moment();
-        var dateutc = current.wuUpdated.utc().format('YYYY-MM-DD HH:mm:ss').replace(' ', '%20');
-        ;
+        var dateutc = current.wuUpdated.utc().format('YYYY-MM-DD+HH:mm:ss');
+        dateutc = dateutc.replace(':', '%3a');
         var path = eval('`' + config.uploadPath + '`')
             + '&winddir=' + current.windDir + '&windspeedmph=' + current.windAvg
             + '&windgustmph=' + current.windSpeed + '&tempf=' + current.temperature
             + '&rainin=' + current.rainRate + '&dailyrainin=' + current.dayRain + '&baromin=' + current.barometer
             + '&humidity=' + current.humidity + '&dewptf=' + current.dewpoint
             + '&action=updateraw'
+            + '&softwaretype=custom'
             + '&realtime=1&rtfreq=' + config.updateFrequency;
         var options = {
             host: config.uploadHost,
@@ -75,12 +76,14 @@ class Wunderground {
                             }
                         });
                     }
+                    else
+                        Common.Logger.info('wu.upload result:' + resultData);
                 });
                 response.on('timeout', socket => {
                     Common.Logger.error('wu.upload resp timeout');
                 });
                 response.on('error', err => {
-                    Common.Logger.error('wu.upload resp error' + err);
+                    Common.Logger.error('wu.upload resp error ' + err);
                 });
             });
             request.on('error', err => {

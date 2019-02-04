@@ -11,7 +11,7 @@ import * as Common from './Common';
 export default class Wunderground {
     config: any;
     mongo: MongoDB;
-
+     
     constructor(config, mongo: MongoDB) {
         this.config = config;
         this.mongo = mongo;

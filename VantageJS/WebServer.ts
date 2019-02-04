@@ -4,36 +4,46 @@ const moment = require('moment');
 const url = require('url');
 import * as Common from './Common';
 import VantageWs from './VantageWS';
+import ClientSocket from './ClientSocket';
 
 export default class WebServer {
     config:any;
     server:any;
     io: any;
-    socket: any;
+    clientSocket: ClientSocket;
     ws:VantageWs;
 
      constructor(config, ws:VantageWs) {
         this.config = config;  
         this.ws = ws;     
     }
-
+     
     start() {
-         this.server = http.createServer((req,res)=> {this.requestReceived(req,res)});
-        this.io = require('socket.io-client');
-        //this.io = require('socket.io')(this.server);        
+        this.server = http.createServer((req,res)=> {this.requestReceived(req,res)});
+        this.io = require('socket.io-client');         
         this.server.listen(this.config.webPort);
         Common.Logger.info('web server listening ' + this.config.webPort);
-        //this.webSocket();
-        this.socket = this.clientSocket();
+        this.clientSocket = new ClientSocket(this.config,'vantagejs');
+        this.clientSocket.start();
 
-        this.ws.onCurrent(current => {
+        this.ws.subscribeCurrent(current => {           
             this.emit('current', current);
         });
-        this.ws.onHighLow(hilows => {
+        this.ws.subscribeHiLow(hilows => {
             this.emit('hilows', hilows);
         });
-        this.ws.onAlert(alerts => {
+        this.ws.subscribeAlert(alerts => {
             this.emit('alerts', alerts);
+        }); 
+
+        this.clientSocket.subscribe('vp1_current', current => {                
+            var vp1Current = JSON.parse(current);
+            vp1Current.dateLoaded = new Date(vp1Current.dateLoaded);
+            this.ws.vp1Current = vp1Current;
+        });
+
+        this.clientSocket.subscribe('vp1_hilows', hilows => {
+            this.ws.vp1Hilows = hilows;
         });
     }
 
@@ -53,7 +63,8 @@ export default class WebServer {
         if (allowOrigin.length)
             allowOrigins = allowOrigin[0];
 
-        Common.Logger.info(allowOrigins);   
+        Common.Logger.info(allowOrigins);  
+        
         try {
 
             if (req.url == '/hilows') {
@@ -77,11 +88,11 @@ export default class WebServer {
                     res.end("no data");
                 }
             }
+
             if (req.url == '/gettime') {
                 res.writeHead(200);
-
-
             }
+
             if (req.url.indexOf('/archives') > -1) {
                 var args = req.url.split(/[&,?,=]+/);
                 var startDt = null;
@@ -231,50 +242,13 @@ export default class WebServer {
     //}
 
     emit(name, obj) {
-        try {
-            //this.io.sockets.emit(name, JSON.stringify(obj));
-            this.socket.emit(name, JSON.stringify(obj));
+        try {          
+            this.clientSocket.socketEmit(name, obj);
         }
         catch (e) {
             Common.Logger.error('WebServer.emit' + e);
         }
     }
 
-    clientSocket() {   
-        /* for logging in and getting a token
-        var post_data = JSON.stringify({client:'weathervsw'});
-        var token = '';
-
-        var request = http.request({
-            host: 'localhost',
-            port: '9000',
-            path: '/login',
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'Content-Length': post_data.length
-            }
-        }, resp => {
-            resp.on('data', chunk => {
-                token += chunk;
-            })
-            resp.on('end', () => {
-        */
-        var socket = this.io(this.config.socketUrl, { query: {client:"vantagejs"}});
-        
-        socket.on('connect', () => {
-            Common.Logger.info('socket connected');
-            if (this.ws.hilows) {
-                this.emit('hilows', this.ws.hilows);
-            }
-                   
-        });
-
-        return socket;                  
-            //});
-        //}
-        //);
-
-        
-    }
+    
 }

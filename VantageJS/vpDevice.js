@@ -1,4 +1,12 @@
 "use strict";
+var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
+    return new (P || (P = Promise))(function (resolve, reject) {
+        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
+        function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
+        function step(result) { result.done ? resolve(result.value) : new P(function (resolve) { resolve(result.value); }).then(fulfilled, rejected); }
+        step((generator = generator.apply(thisArg, _arguments || [])).next());
+    });
+};
 Object.defineProperty(exports, "__esModule", { value: true });
 const process = require('process');
 const moment = require('moment');
@@ -207,40 +215,60 @@ class VPDevice {
         return [byte2, byte1];
     }
     wakeUp() {
-        var attempts = 0;
-        var promise = new Promise((resolve, reject) => {
-            VPDevice.isBusy = true;
-            this.dataReceived = () => {
-                var data = this.serialData;
-                if (data.length == 99) {
-                    console.log('wakeup got LOOP data');
-                }
-                else {
-                    if (data && data.length == 2 && data[0] == 10 && data[1] == 13) {
-                        VPDevice.isBusy = false;
-                        this.lastActv = Date();
-                        resolve(true);
+        return __awaiter(this, void 0, void 0, function* () {
+            var attempts = 0;
+            var promise = new Promise((resolve, reject) => {
+                VPDevice.isBusy = true;
+                var received = 0;
+                var waitintv;
+                this.dataReceived = () => {
+                    var data = this.serialData;
+                    received = data.length;
+                    if (data.length == 99) {
+                        console.log('wakeup got LOOP data');
                     }
                     else {
-                        if (attempts > 2) {
+                        if (data && received == 2 && data[0] == 10 && data[1] == 13) {
                             VPDevice.isBusy = false;
+                            this.lastActv = Date();
+                            clearInterval(waitintv);
+                            resolve(true);
+                        }
+                        else {
+                            if (attempts > 2) {
+                                VPDevice.isBusy = false;
+                                reject(false);
+                                clearInterval(waitintv);
+                            }
+                            else
+                                setTimeout(() => {
+                                    this.port.write('\n');
+                                }, 2000);
+                            attempts++;
+                        }
+                    }
+                };
+                this.errorReceived = err => {
+                    VPDevice.isBusy = false;
+                    reject(err);
+                };
+                this.port.write('\n');
+                waitintv = setInterval(() => {
+                    if (received == 0) {
+                        attempts++;
+                        if (attempts < 2) {
+                            console.log('retrying wakeup');
+                            this.port.write('\n');
+                        }
+                        else {
+                            clearInterval(waitintv);
                             reject(false);
                         }
-                        else
-                            setTimeout(() => {
-                                this.port.write('\n');
-                            }, 2000);
-                        attempts++;
                     }
-                }
-            };
-            this.errorReceived = err => {
-                VPDevice.isBusy = false;
-                reject(err);
-            };
-            this.port.write('\n');
+                }, 10000);
+            });
+            return promise;
         });
-        return promise;
     }
     isAvailable() {
         var wtimer;
@@ -256,7 +284,7 @@ class VPDevice {
                         resolve();
                     }
                     attempts++;
-                    if (attempts > 60) {
+                    if (attempts > 60) { //60 attempts @500ms = 30 secs
                         clearInterval(wtimer);
                         VPDevice.isBusy = false;
                         reject();

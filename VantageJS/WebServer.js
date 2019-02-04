@@ -4,6 +4,7 @@ const http = require('http');
 const moment = require('moment');
 const url = require('url');
 const Common = require("./Common");
+const ClientSocket_1 = require("./ClientSocket");
 class WebServer {
     constructor(config, ws) {
         this.config = config;
@@ -12,19 +13,26 @@ class WebServer {
     start() {
         this.server = http.createServer((req, res) => { this.requestReceived(req, res); });
         this.io = require('socket.io-client');
-        //this.io = require('socket.io')(this.server);        
         this.server.listen(this.config.webPort);
         Common.Logger.info('web server listening ' + this.config.webPort);
-        //this.webSocket();
-        this.socket = this.clientSocket();
-        this.ws.onCurrent(current => {
+        this.clientSocket = new ClientSocket_1.default(this.config, 'vantagejs');
+        this.clientSocket.start();
+        this.ws.subscribeCurrent(current => {
             this.emit('current', current);
         });
-        this.ws.onHighLow(hilows => {
+        this.ws.subscribeHiLow(hilows => {
             this.emit('hilows', hilows);
         });
-        this.ws.onAlert(alerts => {
+        this.ws.subscribeAlert(alerts => {
             this.emit('alerts', alerts);
+        });
+        this.clientSocket.subscribe('vp1_current', current => {
+            var vp1Current = JSON.parse(current);
+            vp1Current.dateLoaded = new Date(vp1Current.dateLoaded);
+            this.ws.vp1Current = vp1Current;
+        });
+        this.clientSocket.subscribe('vp1_hilows', hilows => {
+            this.ws.vp1Hilows = hilows;
         });
     }
     requestReceived(req, res) {
@@ -193,44 +201,11 @@ class WebServer {
     //}
     emit(name, obj) {
         try {
-            //this.io.sockets.emit(name, JSON.stringify(obj));
-            this.socket.emit(name, JSON.stringify(obj));
+            this.clientSocket.socketEmit(name, obj);
         }
         catch (e) {
             Common.Logger.error('WebServer.emit' + e);
         }
-    }
-    clientSocket() {
-        /* for logging in and getting a token
-        var post_data = JSON.stringify({client:'weathervsw'});
-        var token = '';
-
-        var request = http.request({
-            host: 'localhost',
-            port: '9000',
-            path: '/login',
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'Content-Length': post_data.length
-            }
-        }, resp => {
-            resp.on('data', chunk => {
-                token += chunk;
-            })
-            resp.on('end', () => {
-        */
-        var socket = this.io(this.config.socketUrl, { query: { client: "vantagejs" } });
-        socket.on('connect', () => {
-            Common.Logger.info('socket connected');
-            if (this.ws.hilows) {
-                this.emit('hilows', this.ws.hilows);
-            }
-        });
-        return socket;
-        //});
-        //}
-        //);
     }
 }
 exports.default = WebServer;

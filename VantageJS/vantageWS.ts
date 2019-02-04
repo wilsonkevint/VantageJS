@@ -21,7 +21,9 @@ export default class VantageWs  {
     mongo: any;
     device: VPDevice;
     current: VPCurrent;
-    hilows: VPHiLow;  
+    hilows: VPHiLow;
+    vp1Current: VPCurrent;
+    vp1Hilows: VPHiLow;
     config: any;
     forecast: any;
     wu: Wunderground;
@@ -32,8 +34,8 @@ export default class VantageWs  {
     pauseTimer: number;
     isActive: boolean;
     queryEngine: QueryEngine;
-
-    public constructor(config: any) {  
+    
+    public constructor(config: any, ) {  
       
         this.config = config;       
         this.eventEmitter = new EventEmitter();         
@@ -115,7 +117,13 @@ export default class VantageWs  {
        
         var startx = data.length == 99 ? 0 : 1; 
         if (VPDevice.validateCRC(data, startx)) {
-            this.current = new VPCurrent(data);
+            this.current = new VPCurrent(data);       
+
+            if (this.vp1Current && VPBase.timeDiff(this.vp1Current.dateLoaded, 'm') < 6) {
+                console.log('replacing current temp of ' + this.current.temperature + ' with vp1 temp of ' + this.vp1Current.temperature);
+                this.current.temperature = this.vp1Current.temperature;
+            }
+
             this.wu.upload(this.current);
 
             this.emit('current', this.current);
@@ -339,7 +347,7 @@ export default class VantageWs  {
             last = VPBase.timeDiff(this.forecast.last, 'h');
         }
 
-        if (!last || last >= 4) {
+        if (!last || last >= 4 || (this.forecast.periods.length && !this.forecast.periods[0].fcttext)) {
             promise = this.wu.getForecast();  
         }
         else {
@@ -494,8 +502,17 @@ export default class VantageWs  {
             Common.Logger.error(e);
         }
     }
+     
+    subscribeEvent(listener: any,eventName:string) {
+        try {
+            this.eventEmitter.on(eventName, listener);
+        }
+        catch (e) {
+            Common.Logger.error(e);
+        }
+    }
 
-    onCurrent(listener: any) {
+    subscribeCurrent(listener: any) {
         try {
             this.eventEmitter.on('current', listener);
         }
@@ -503,7 +520,8 @@ export default class VantageWs  {
             Common.Logger.error(e);
         }
     }
-    onHighLow(listener: any) {
+
+    subscribeHiLow(listener: any) {
         try {
             this.eventEmitter.on('hilows', listener);
         }
@@ -511,7 +529,7 @@ export default class VantageWs  {
             Common.Logger.error(e);
         }
     }
-    onAlert(listener: any) {
+    subscribeAlert(listener: any) {
         try {
             this.eventEmitter.on('alert', listener);
         }
@@ -519,7 +537,7 @@ export default class VantageWs  {
             Common.Logger.error(e);
         }
     }
-    onHistory(listener: any) {
+    subscribeHistory(listener: any) {
         try {
             this.eventEmitter.on('history', listener);
         }

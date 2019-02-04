@@ -1,13 +1,14 @@
 ﻿declare function require(name: string);
 const process = require('process');
 const config = require('./VantageJS.json');
+const http = require('http');
 const readline = require('readline');
 import VPCurrent from './VPCurrent';
 import VPDevice from './VPDevice';
 import VPHiLow from './VPHiLow';
-import WebServer from './WebServer'; 
 import VPBase from './VPBase'; 
 import * as Common from './Common';
+import ClientSocket from './ClientSocket';
 import { EventEmitter } from 'events';
 
 const rl = readline.createInterface({
@@ -20,52 +21,38 @@ Common.Logger.init('vantagejs.log');
 const vp = new VPDevice(config.linux_serialPort);
 const eventEmitter = new EventEmitter(); 
 let lastHiLows = null;
-let lastCurrent = null
-
-const vws = {
-   
-    onCurrent: (listener: any) => {
-        try {
-            eventEmitter.on('current', listener);
-        }
-        catch (e) {
-            Common.Logger.error(e);
-        }
-    },
-    onHighLow: (listener: any) => {
-        try {
-            eventEmitter.on('hilows', listener);
-        }
-        catch (e) {
-            Common.Logger.error(e);
-        }
-    },
-    onAlert: (listener: any) => {
-
-    }
-}
-
-const svr = new WebServer(config, vws);
-svr.clientSocket("vwszero");
-
+let lastCurrent = null;
+let current: VPCurrent;
+var clientSocket: ClientSocket;
 
 vp.onOpen = () => {
+    clientSocket = new ClientSocket(config,'vp1');
+    clientSocket.start();
+
+    let server = http.createServer((req, res) => {
+        res.writeHead(200, { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' });
+        res.end(JSON.stringify(current));
+    });
+
+    server.listen(9000);
+
     setTimeout(() => {
-        getCurrent();
+        getCurrent();        
     }, 3000);
 
     setInterval(() => {
-        if (!lastCurrent || VPBase.timeDiff(lastCurrent, 'm') >= config.loopInterval) {
-            getCurrent();
+        getCurrent();
+
+        if (lastHiLows == null || VPBase.timeDiff(lastHiLows, 'm') >= config.hilowInterval) {
+            getHiLows();
         }
-        else {
-            if (lastHiLows == null || VPBase.timeDiff(lastHiLows, 'm') >= config.hilowInterval) {
-                getHiLows();
-            }
-        }
-    },20000)
+
+    }, config.loopInterval)
 }
 
+ 
+
+ 
 
 function getCurrent() {
     console.log('getCurrent');
@@ -74,11 +61,10 @@ function getCurrent() {
         console.log('waked');
         vp.getSerial('LOOP 1',99,true).then(data => {
             console.log('received:' + data.length);
-            var current = parseCurrent(data);
-            if (current && current.temperature) {
+            current = parseCurrent(data);
+            if (current && current.temperature != null && current.temperature < 120 && current.temperature > -50) {
                 console.log('temp: ' + current.temperature);
-                eventEmitter.emit('current', current);
-                getHiLows();
+                clientSocket.socketEmit('vp1_current', current);               
                 lastCurrent = new Date();
             }
             else {
@@ -96,8 +82,8 @@ function getHiLows() {
         vp.getSerial("HILOWS", 438, true).then(data => {
             if (VPDevice.validateCRC(data, 0)) {                     
                 var hilows = new VPHiLow(data);      
-                console.log('got hilows: ',hilows.temperature.dailyHi);
-                eventEmitter.emit('hilows', hilows);
+                console.log('got hilows: ', hilows.temperature.dailyHi);
+                clientSocket.socketEmit('vp1_hilows', hilows);
                 lastHiLows = new Date();
             }
         }, deviceError);
