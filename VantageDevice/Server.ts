@@ -1,22 +1,27 @@
 ﻿import DeviceReader from "./DeviceReader";
+import VPCurrent from "../VantageLib/VPCurrent";
+import VPHiLow from "../VantageLib/VPHiLow";
 
 const SerialPort = require("serialport");
 const Http = require('http');
 const SocketIO = require('socket.io');
+const moment = require('moment');
 
 export default class Server {
     server: any;
     io: any;
-    vwsSocket: any; 
-    hilows: any;
-    current: any;   
+    vwsSocket: any;
+    hilows: VPHiLow;
+    current: VPCurrent;
+    vp1current: VPCurrent;
+    alerts: any;
     lastContact: any;
     clients: Array<any>;
     config: any;
     device: DeviceReader;
 
-    constructor(config,device) {
-        this.config = config;       
+    constructor(config, device) {
+        this.config = config;
         this.device = device;
     }
 
@@ -31,54 +36,36 @@ export default class Server {
         this.clients = new Array<any>();
 
         this.device.currentReceived = () => {
+            this.current = this.device.current;
+           
+            if (this.vp1current) {
+                var dateLoaded = moment(this.vp1current,'yyyy-mm-ddTHH:MM:ss');
+                if (VPCurrent.timeDiff(dateLoaded.toDate(), 'm') < 6) {
+                    this.current.temperature = this.vp1current.temperature;
+                }
+            }
             this.sendCurrent();
         }
         this.device.hilowReceived = () => {
-            this.sendHiLows()
+            this.hilows = this.device.hilows;
+            this.sendHiLows();
         };
     }
 
     onConnection(socket) {
         try {
             console.log('socket connection started');
-            this.clients.push(socket); 
+            this.clients.push(socket);
 
-            socket.on('wakeup', async (data) => {
-                var client = data.client;
-                console.log('client:' + client);
-
-                if (client == 'vantagejs') {
-                    try {
-                        let data = await this.device.wakeUp();
-                        socket.emit('wakeup_resp',data);
-                    }
-                    catch (err) {
-                        socket.emit('wakeup_error');
-                    }
-                }
+            socket.on('alerts', async (alerts) => {
+                this.alerts = alerts;
+                this.sendAlerts();
             });
 
-            socket.on('isavailable', async () => {
-                try {
-                    let isAvail = await this.device.isAvailable();
-                    socket.emit('isavaiable_resp', isAvail);
-                }
-                catch (err) {
-                    socket.emit('isavailable_error', err);
-                }
+            socket.on('vp1_current', (current) => {               
+                this.vp1current = current;
             });
 
-            socket.on('archives', async (data) => {
-                try {
-                    let startDate = data.startDate;
-                    let archives = await this.device.getArchives(startDate);
-                    socket.emit('archives_resp', archives);
-                }
-                catch (err) {
-                    socket.emit('isavailable_error', err);
-                }
-            });                       
-            
             socket.on('disconnect', () => {
                 for (var i = 0; i < this.clients.length; i++) {
                     if (this.clients[i] == socket.conn) {
@@ -94,24 +81,62 @@ export default class Server {
     }
 
     requestReceived(req, res) {
-        res.writeHead(200, { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' });
-        res.end(JSON.stringify(
-            {
-                lastLoop: this.device.lastLoop,
-                lastHiLow: this.device.lastLoop,
-                errors: this.device.lastLoop
-            }));
-    }    
+        let hdr = { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' };
+
+        if (req.url == '/status') {
+            res.writeHead(200, hdr);
+            res.end(JSON.stringify(
+                {
+                    lastLoop: this.device.lastLoop,
+                    lastHiLow: this.device.hilows ? this.device.hilows.dateLoaded : null,
+                    errors: ''
+                }));
+        }
+
+        else if (req.url == '/current') {
+            res.writeHead(200, hdr);
+            res.end(JSON.stringify(this.device.current));
+        }
+
+        else if (req.url == '/hilows') {
+            res.writeHead(200, hdr);
+            res.end(JSON.stringify(this.device.hilows));
+        }
+
+        else if (req.url.indexOf('/archives') == 0) {
+            let parms = req.url.split('=');
+            let archdt = parms.length > 1 ? decodeURI(parms[1]) : null;
+            res.writeHead(200, hdr);
+            try {
+                let archives = this.device.getArchives(archdt).then(archives => {
+                    res.end(JSON.stringify(archives));
+                });
+            }
+            catch (err) {
+                res.end(err);
+            }
+            res.end(JSON.stringify(this.device.hilows));
+        }
+
+    }
 
     sendCurrent() {
         this.clients.forEach(client => {
-            client.emit('current', { data: this.device.current });
+            client.emit('current', this.current);
         });
     }
 
     sendHiLows() {
         this.clients.forEach(client => {
-            client.emit('hilows', { data: this.device.hilows });
+            client.emit('hilows', this.hilows);
         });
     }
+
+    sendAlerts() {
+        this.clients.forEach(client => {
+            client.emit('alerts', this.alerts);
+        });
+    }
+
 }
+   

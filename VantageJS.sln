@@ -14,6 +14,11 @@ Project("{9092AA53-FB77-4645-B42D-1CCCA6BD08BD}") = "VantageDevice", "VantageDev
 EndProject
 Project("{9092AA53-FB77-4645-B42D-1CCCA6BD08BD}") = "VantageLib", "VantageLib\VantageLib.njsproj", "{8BA2A6DB-F3A4-4DD5-A822-A2138412FDC7}"
 EndProject
+Project("{9092AA53-FB77-4645-B42D-1CCCA6BD08BD}") = "VantageApp", "VantageApp\VantageApp.njsproj", "{9E08BDDD-C5CE-41C7-9E9C-5979FDD8A82C}"
+	ProjectSection(ProjectDependencies) = postProject
+		{8BA2A6DB-F3A4-4DD5-A822-A2138412FDC7} = {8BA2A6DB-F3A4-4DD5-A822-A2138412FDC7}
+	EndProjectSection
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -36,6 +41,10 @@ Global
 		{8BA2A6DB-F3A4-4DD5-A822-A2138412FDC7}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{8BA2A6DB-F3A4-4DD5-A822-A2138412FDC7}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{8BA2A6DB-F3A4-4DD5-A822-A2138412FDC7}.Release|Any CPU.Build.0 = Release|Any CPU
+		{9E08BDDD-C5CE-41C7-9E9C-5979FDD8A82C}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{9E08BDDD-C5CE-41C7-9E9C-5979FDD8A82C}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{9E08BDDD-C5CE-41C7-9E9C-5979FDD8A82C}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{9E08BDDD-C5CE-41C7-9E9C-5979FDD8A82C}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

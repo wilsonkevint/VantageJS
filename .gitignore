@@ -246,3 +246,4 @@ ModelManifest.xml
 
 VantageJS.json
 *.js
+*.js.map

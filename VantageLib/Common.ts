@@ -1,7 +1,6 @@
 ﻿declare function require(name: string);
 const moment = require('moment'); 
 
-
 export class Util {
 
     static padZero(num: number, len: number) {

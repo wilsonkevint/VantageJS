@@ -1,28 +1,27 @@
 ﻿declare function require(name: string);
-import * as Common from './Common';  
+import * as Common from '../VantageLib/Common';  
 import VPBase from '../VantageLib/VPBase';
 import VPArchive from '../VantageLib/VPArchive';
 import VPCurrent from '../VantageLib/VPCurrent';
 import VPHiLow from '../VantageLib/VPHiLow';
-import { setInterval } from 'timers';
+import { setInterval, clearInterval } from 'timers';
 const SerialPort = require("serialport");
-
+ 
 export default class DeviceReader {
     config: any;
     port: any;
-    isBusy: boolean;
-    serialData: Uint8Array;
+    isBusy: boolean;    
     pauseTimer: any;
     lastLoop: any;
     dataReceived: any;
     errorReceived: any;
-    loopTimer: any;
-    loopCount: number;
+    loopTimer: any;    
+    hiLowTimer: any;
     currentReceived: any;
     hilowReceived: any;
     current: VPCurrent;
     hilows: VPHiLow;
-
+   
     public constructor(config: any) {
 
         this.config = config;
@@ -57,6 +56,9 @@ export default class DeviceReader {
         this.port.on('data', (data: Uint8Array) => {
             this.dataReceived && this.dataReceived(data);
         });
+
+        console.log('loopInterval:' + this.config.hilowInterval);
+        console.log('hilowInterval:' + this.config.hilowInterval)
     }
 
     getSerial(cmd: any, reqchars: number, expectAck: boolean): Promise<Uint8Array> {
@@ -111,23 +113,22 @@ export default class DeviceReader {
     }
 
     async getHiLows(): Promise<any> {
-
-        let promise = new Promise((resolve, reject) => {
+        console.log('getHiLows');
+        let promise = new Promise((resolve, reject) => {            
             this.isAvailable().then(() => {
 
                 this.wakeUp().then(result => {
 
                     this.getSerial("HILOWS", 438, true).then(data => {
-
                         if (DeviceReader.validateCRC(data, 0)) {
-                            this.serialData = data;
                             this.hilows = new VPHiLow(data);
                             this.hilowReceived();
+                            console.log('got hilows');
                             resolve();
                         }
 
-                    }, (err) => { Common.Logger.error(err); reject(); });
-                });
+                    }).catch(err => { Common.Logger.error(err); reject(); });
+                }).catch(err => { Common.Logger.error(err); reject(); });
 
             }, err => {
                 Common.Logger.error('hilows device not available');
@@ -170,69 +171,85 @@ export default class DeviceReader {
         return promise;
     }
 
-    async pauseLoop(secs) {
-        let promise = new Promise((resolve, reject) => {
-            this.pauseTimer = setTimeout(() => {
-                this.pauseTimer = 0;
-                resolve();
-            }, secs * 1000);
-        });
-
-        return promise;
+    pauseLoop(secs) {      
+        this.pauseTimer = setTimeout(() => {
+            this.pauseTimer = 0;            
+        }, secs * 1000);
     }
 
     async start() {
-        this.loopCount = this.config.loopCount;
+        this.pauseTimer = 0; 
 
         try {
-            await this.setTime();
-            debugger;
+            await this.setTime();            
         }
         catch (err) {
             Common.Logger.error(err);
             throw err;
         }
 
+        try {
+            await this.getHiLows();
+        }
+        catch {           
+        }
+
+        this.startLoop();   
+
         this.loopTimer = setInterval(() => {
 
-            this.getHiLows().then(() => {
-                this.startLoop();
-
-            }).catch(err => {
-                Common.Logger.error(err);
-                this.startLoop();
-            });
+            this.startLoop();
 
         }, this.config.loopInterval);
 
-        await this.getHiLows();
-       
-        this.startLoop();            
+        this.hiLowTimer = setInterval(async () => {
+            try {                
+                this.pauseLoop(180);
+                await this.getHiLows();
+                this.pauseTimer = 0;
+            }
+            catch (err) {
+                this.pauseTimer = 0;
+                Common.Logger.error(err);
+            }
+           
+        }, this.config.hilowInterval);               
     }
 
     startLoop() {
-        if (!this.pauseTimer) {
-            
-            this.isAvailable().then(() => {                
+        //console.log('startLoop');
 
-                this.dataReceived = (data) => {
-                    this.lastLoop = new Date();
+        if (this.pauseTimer === 0) {
 
-                    if (this.validateLoop(data)) {
-                        this.serialData = data;
-                        this.current =  new VPCurrent(data);    
-                        this.currentReceived();                       
-                    }
-                }
+            if (this.current == null || VPBase.timeDiff(this.current.dateLoaded, 's') > 6) {
+                //console.log('startLoop1');
 
-                this.port.write('LOOP ' + this.loopCount.toString() + '\n');
+                this.isAvailable().then(() => {
+                   // console.log('startLoop2');                  
 
-            }).catch(err => {
-                Common.Logger.error(err);
+                    this.wakeUp().then(() => {
+                        this.dataReceived = this.gotLoop;
+                        this.port.write('LOOP ' + this.config.loopCount.toString() + '\n');
+                    }).catch ()
 
-            });          
+                }).catch(err => {
+                    Common.Logger.error(err);
+                });
+            }
+        }
+        else {
+            console.log('pauseTimer on');
         }
 
+    }
+
+    gotLoop(data) {
+        this.lastLoop = new Date();
+        if (this.validateLoop(data)) {
+            this.current = new VPCurrent(data);
+            //console.log('gotLoop current:', this.current.temperature);
+            this.currentReceived();
+        }
     }
 
     async setTime() {
@@ -271,11 +288,11 @@ export default class DeviceReader {
     async sendCommand(cmd, binres?: boolean) {
         let result: any = '';
 
-        await this.pauseLoop(2);
+        this.pauseLoop(2);
         await this.isAvailable();
         await this.wakeUp();
         let data = await this.getSerial(cmd + '\n', 1, false);
-
+        this.pauseTimer = 0;
         if (!binres) {
             for (var i in data) {
                 result += String.fromCharCode(data[i]);
@@ -300,8 +317,7 @@ export default class DeviceReader {
                 received = data.length;
 
                 if (data.length == 99) {
-                    console.log('wakeup got LOOP data');
-                    reject('wakeup got LOOP');
+                    //console.log('wakeup got LOOP data');                   
                 }
                 else {
                     if (data && received == 2 && data[0] == 10 && data[1] == 13) {
@@ -312,8 +328,8 @@ export default class DeviceReader {
                     else {
                         if (attempts > 2) {
                             this.isBusy = false;
-                            reject(false);
                             clearInterval(waitintv);
+                            reject(false);                           
                         }
                         else
                             setTimeout(() => {
@@ -327,7 +343,10 @@ export default class DeviceReader {
             }
 
             this.errorReceived = err => {
-                reject(err);
+                this.isBusy = false;
+                clearInterval(waitintv);
+                console.log(err);
+                reject('errorRec:' + err);
             }
 
             this.port.write('\n');              //send wakeup
@@ -341,6 +360,8 @@ export default class DeviceReader {
                     }
                     else {
                         clearInterval(waitintv);
+                        this.isBusy = false;
+                        console.log('wakeup failed');
                         reject(false);
                     }
                 }
@@ -355,14 +376,20 @@ export default class DeviceReader {
         let archives;
         let cmd = startDate != null ? 'DMPAFT' : 'DMP';
 
-        let result = await this.sendArchiveCmd(cmd);
+        try {
+            let result = await this.sendArchiveCmd(cmd);
 
-        if (startDate) {
-            let ts = DeviceReader.getArchiveTS(startDate);
-            result = await this.getSerial(ts, 6, true);
-        }      
+            if (startDate) {
+                let ts = DeviceReader.getArchiveTS(startDate);
+                result = await this.getSerial(ts, 6, true);
+            }
 
-        archives = await this.retrieveArchive(result, false);
+            archives = await this.retrieveArchive(result, false);
+        }
+        catch (err) {
+            Common.Logger.error(err);
+            archives = null;
+        }
         return archives;
     }       
 
@@ -401,8 +428,7 @@ export default class DeviceReader {
                 return;
             }
 
-            this.dataReceived = () => {
-                let data = this.serialData;
+            this.dataReceived = (data) => {               
                 if (received.length < 267)
                     received.push.apply(received, data);
 

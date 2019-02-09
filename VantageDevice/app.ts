@@ -1,7 +1,7 @@
 ﻿declare function require(name: string);
 import Server from './Server';
 import DeviceReader from './DeviceReader';
-import * as Common from './Common';
+import * as Common from '../VantageLib/Common'; 
 const os = require('os');
 const config = require('./VantageJS.json');
 
@@ -14,6 +14,6 @@ let server = new Server(config, device);
 
 device.start(); 
 
-server.start();   
+server.start();    
 
 

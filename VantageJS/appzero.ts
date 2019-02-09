@@ -43,9 +43,9 @@ vp.onOpen = () => {
     setInterval(() => {
         getCurrent();
 
-        if (lastHiLows == null || VPBase.timeDiff(lastHiLows, 'm') >= config.hilowInterval) {
-            getHiLows();
-        }
+        //if (lastHiLows == null || VPBase.timeDiff(lastHiLows, 'm') >= config.hilowInterval) {
+        //    getHiLows();
+        //}
 
     }, config.loopInterval)
 }
@@ -71,7 +71,7 @@ function getCurrent() {
                 console.log('current not parsed');
             }
 
-        });
+        }, err => console.log('get serial error:' + err) );
     }, err => { console.log('wake up:' + err); });
 
 }

@@ -38,10 +38,27 @@
     <Content Include="package.json" />
     <Content Include="README.md" />
     <Content Include="tsconfig.json" />
+    <Content Include="VantageJS.json" />
+    <TypeScriptCompile Include="Archiver.ts">
+      <SubType>Code</SubType>
+    </TypeScriptCompile>
+    <TypeScriptCompile Include="ClientSocket.ts" />
+    <TypeScriptCompile Include="Common.ts" />
+    <TypeScriptCompile Include="CWOP.ts" />
+    <TypeScriptCompile Include="Database.ts" />
+    <TypeScriptCompile Include="DeviceReader.ts" />
+    <TypeScriptCompile Include="QueryEngine.ts" />
+    <TypeScriptCompile Include="Server.ts" />
+    <TypeScriptCompile Include="VantageVue.ts">
+      <SubType>Code</SubType>
+    </TypeScriptCompile>
     <TypeScriptCompile Include="VPArchive.ts" />
     <TypeScriptCompile Include="VPBase.ts" />
     <TypeScriptCompile Include="VPCurrent.ts" />
     <TypeScriptCompile Include="VPHiLow.ts" />
+    <TypeScriptCompile Include="WeatherAlert.ts" />
+    <TypeScriptCompile Include="WebRequest.ts" />
+    <TypeScriptCompile Include="Wunderground.ts" />
   </ItemGroup>
   <!-- Do not delete the following Import Project.  While this appears to do nothing it is a marker for setting TypeScript properties before our import that depends on them. -->
   <Import Project="$(MSBuildExtensionsPath32)\Microsoft\VisualStudio\v$(VisualStudioVersion)\TypeScript\Microsoft.TypeScript.targets" Condition="False" />

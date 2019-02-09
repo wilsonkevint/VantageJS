@@ -313,7 +313,7 @@ import * as Common from './Common';
             var promise = new Promise <boolean>((resolve, reject) => {               
                 VPDevice.isBusy = true; 
                 var received = 0;
-                var waitintv;
+                let waitintv=0;
 
                 this.dataReceived = () => {
                     var data = this.serialData;
@@ -326,14 +326,16 @@ import * as Common from './Common';
                         if (data && received == 2 && data[0] == 10 && data[1] == 13) {
                             VPDevice.isBusy = false;
                             this.lastActv = Date();
-                            clearInterval(waitintv);
+                            if (waitintv)
+                                clearInterval(waitintv);
                             resolve(true);                            
                         }
                         else {
                             if (attempts > 2) {
                                 VPDevice.isBusy = false;
                                 reject(false);
-                                clearInterval(waitintv);
+                                if (waitintv)
+                                    clearInterval(waitintv);
                             }
                             else  
                                 setTimeout(() => {
