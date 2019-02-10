@@ -1,11 +1,14 @@
 ﻿declare function require(name: string);
 import * as Common from './Common';
-var http = require('http');
-var https = require('https');
+import { request } from 'https';
+import { join } from 'path';
+const http = require('http');
+const https = require('https');
+const querystring = require('querystring'); 
 
 export default class WebRequest {
 
-        static get(host: string, path: string): any {
+    static get(host: string, path: string, args: object = null, timeout = 4000): Promise<any> {
             var port = 80; 
             var Http = http;
             if (!path) {
@@ -14,8 +17,13 @@ export default class WebRequest {
                     host = host.substr(0, host.indexOf('/'));
                 }
                 else
-                    path = '/';                
+                    path = '/';
             }
+
+            if (args) {
+                path += '?' + querystring.stringify(args);
+            }
+           
 
             if (host.indexOf(':') > -1) {
                 var parms = host.split(':');
@@ -30,11 +38,11 @@ export default class WebRequest {
                 port: port,
                 path: path,
                 method: 'get',
-                timeout: 4000
+                timeout: timeout
                 //headers: {'content-type':'application/json'}
             }
                    
-            var promise = new Promise( function(resolve, reject) {
+            let promise = new Promise<any>( function(resolve, reject) {
                 var resultData = '';
 
                 try {
@@ -47,7 +55,7 @@ export default class WebRequest {
 
                         });
                         response.on('timeout', function(socket) {
-                            reject();
+                            reject('timeout');
                         });
                         response.on('error', function(err) {
                             reject(err);
@@ -60,11 +68,6 @@ export default class WebRequest {
                     request.on('error', function(err) {
                         reject(err);
                     });
-
-                    request.setTimeout(30000, function() {
-                        reject('timeout');
-                    });
-
                     //request.setHeader('user-agent', 'Mozilla /5.0 (Compatible MSIE 9.0;Windows NT 6.1;WOW64; Trident/5.0)');
                     request.end();
 

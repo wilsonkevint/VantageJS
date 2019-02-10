@@ -8,10 +8,18 @@ Common.Logger.info('started');
 const archiver = new Archiver();
 const dbUpdateInterval = config.dbUpdateInterval * 60 * 1000; 
 
+console.log(config.webUrl);
+
 setInterval(async () => {
-    await archiver.update();
+    await archiver.update().catch(err => {
+        Common.Logger.error(err);
+    });
 }, dbUpdateInterval); 
 
-archiver.update().then(() => { })
+archiver.update().then(() => {
+    Common.Logger.info('finished');
+}).catch(err => {
+    Common.Logger.error(err);
+});
 
 

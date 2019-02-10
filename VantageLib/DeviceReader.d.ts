@@ -20,6 +20,7 @@ export default class DeviceReader {
     getHiLows(): Promise<any>;
     isAvailable(): Promise<boolean>;
     pauseLoop(secs: any): void;
+    init(): void;
     start(): Promise<void>;
     startLoop(): void;
     gotLoop(data: any): void;

@@ -1,10 +1,11 @@
 import Database from './Database';
+import WeatherAlert from './WeatherAlert';
 import VPCurrent from './VPCurrent';
 export default class Wunderground {
     config: any;
     database: Database;
     constructor();
-    getAlerts(): Promise<any>;
+    getAlerts(): Promise<WeatherAlert[]>;
     upload(current: VPCurrent): void;
     getForecast(): any;
     updateFromArchive(): Promise<{}>;

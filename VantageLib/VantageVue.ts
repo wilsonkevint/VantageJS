@@ -5,6 +5,7 @@ import VPCurrent from '../VantageLib/VPCurrent';
 const os = require('os');
 const moment = require('moment');
 const Http = require('http');
+const querystring = require('querystring');
 
 export default class VantageVue {
     current;
@@ -40,8 +41,7 @@ export default class VantageVue {
                     this.current.temperature = this.vp1current.temperature;
                 }
             }
-            this.socket.socketEmit('current', this.current);
-            console.log('current emit');
+            this.socket.socketEmit('current', this.current);            
         }
 
         this.device.hilowReceived = () => {
@@ -61,25 +61,29 @@ export default class VantageVue {
 
     requestReceived(req, res) {
         if (req.url.indexOf('/archives') == 0) {
-            var args = req.url.split(/[&,?,=]+/);
-            var startDt = null;         
+            var args = req.url.split('?');
+            var startDt = null;
             var ctype = 'application/json';
             res.writeHead(200, { "Content-Type": ctype, "Access-Control-Allow-Origin": "*" });
-            if (args.length > 1) {
-                startDt = decodeURI(args[2]);
+            if (args.length > 0) {
+                let obj = querystring.parse(args[1]);
+                startDt = obj.dt;
             }
-            else {               
+            else {
                 res.end('date required');
             }
 
-            this.device.getArchives(startDt).then(archives => {                
+            this.device.getArchives(startDt).then(archives => {
                 res.end(JSON.stringify(archives));
 
             }).catch(err => {
                 res.end(err);
             });
         }
+        else {
+            res.end('no method');
+        }
     }
-}
+} //?dt=
 
 

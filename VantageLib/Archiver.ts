@@ -31,16 +31,23 @@ export default class Archiver {
                 let lastDt = last ? last.archiveDate + ' ' + last.archiveTime : null;
                 let lastId = last ? last._id : 0;
 
-                let archives: Array<VPArchive> = await this.getArchives(lastDt);
+                let data = await this.getArchives(lastDt);
+                let archives: Array<VPArchive> = JSON.parse(data);
+                let inserted = 0; 
 
                 archives.forEach(async (a: VPArchive) => {
                     a._id = moment(a.archiveDate + ' ' + a.archiveTime, 'MM/DD/YYYY HH:mm').unix();
 
                     if (a._id > lastId) {
-                        await this.database.insert('archive', a);
-                        //console.log('inserted ' + a.archiveDate + ' ' + a.archiveTime);
+                        this.database.insert('archive', a).then(() => {
+                            inserted++;
+                        }).catch(err => {
+                            Common.Logger.error(err);
+                        });                        
                     }
                 });
+
+                Common.Logger.info('inserted ' + inserted + ' archive rows');
             }
             catch (err) {
                 Common.Logger.error(err);
@@ -53,8 +60,10 @@ export default class Archiver {
     }  
 
     async getArchives(lastdate) {
-        let path = 'archives?dt=' + lastdate;
-        return WebRequest.get(this.config.webUrl, path);
+        let path = '/archives';
+        let args = { dt: lastdate };
+        let timeout = 60 * 5 * 1000;
+        return WebRequest.get(this.config.webUrl, path,args,timeout);
     }
 
     

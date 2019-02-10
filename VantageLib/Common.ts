@@ -35,7 +35,8 @@ export class Logger {
     }
 
     static warn(...args) {
-        Logger.winston.log('warn', args);
+        var dt = moment().format('MM/DD HH:mm:ss'); 
+        Logger.winston.log('warn',dt, args);
     }
 
     static error(...args) {
@@ -44,7 +45,8 @@ export class Logger {
     }
 
     static debug(...args) {
-        Logger.winston.log('debug', args);
+        var dt = moment().format('MM/DD HH:mm:ss'); 
+        Logger.winston.log('debug',dt, args);
     }
 }
 

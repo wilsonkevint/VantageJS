@@ -4,7 +4,7 @@ import VPBase from '../VantageLib/VPBase';
 import VPArchive from '../VantageLib/VPArchive';
 import VPCurrent from '../VantageLib/VPCurrent';
 import VPHiLow from '../VantageLib/VPHiLow';
-import { setInterval, clearInterval } from 'timers';
+import { setInterval, clearInterval, setTimeout } from 'timers';
 const SerialPort = require("serialport");
  
 export default class DeviceReader {
@@ -24,40 +24,7 @@ export default class DeviceReader {
    
     public constructor() {
 
-        this.config = require('./VantageJS.json');
-
-        try {
-            this.port = new SerialPort(this.config.comPort, {
-                baudRate: 19200,
-                dataBits: 8,
-                stopBits: 1,
-                parity: 'none',
-                parser: SerialPort.parsers.raw
-            });
-        }
-        catch (e) {
-            Common.Logger.error('DeviceReader:' + e);
-            this.errorReceived && this.errorReceived(e);
-        }
-
-        this.port.on('open', data => {
-            Common.Logger.info('comport open');
-        });
-
-        this.port.on('close', () => {
-            Common.Logger.info('comport closed');
-        });
-
-        this.port.on('error', err => {
-            this.isBusy = false;
-            this.errorReceived && this.errorReceived(err);
-            Common.Logger.error(err.message);
-        });
-
-        this.port.on('data', (data: Uint8Array) => {
-            if (this.dataReceived != null)
-                this.dataReceived(data);
-        });
+        this.config = require('./VantageJS.json');        
 
         console.log('loopInterval:' + this.config.hilowInterval);
         console.log('hilowInterval:' + this.config.hilowInterval)
@@ -170,7 +137,7 @@ export default class DeviceReader {
 
                     attempts++;
 
-                    if (attempts > 60) {            //60 attempts @500ms = 30 secs
+                    if (attempts > 60 && this.pauseTimer == 0) {            //60 attempts @500ms = 30 secs
                         clearInterval(wtimer);
                         this.isBusy = false;
                         resolve(true);
@@ -188,10 +155,47 @@ export default class DeviceReader {
         }, secs * 1000);
     }
 
+    init() {
+        try {
+            this.port = new SerialPort(this.config.comPort, {
+                baudRate: 19200,
+                dataBits: 8,
+                stopBits: 1,
+                parity: 'none',
+                parser: SerialPort.parsers.raw
+            });
+        }
+        catch (e) {
+            Common.Logger.error('DeviceReader:' + e);
+            this.errorReceived && this.errorReceived(e);
+            throw e;
+        }
+
+        this.port.on('open', data => {
+            Common.Logger.info('comport open'); 
+        });
+
+        this.port.on('close', () => {
+            Common.Logger.info('comport closed');
+        });
+
+        this.port.on('error', err => {
+            this.isBusy = false;
+            this.errorReceived && this.errorReceived(err);
+            Common.Logger.error(err.message);
+        });
+
+        this.port.on('data', (data: Uint8Array) => {
+            if (this.dataReceived != null)
+                this.dataReceived(data);
+        });
+    }
+
     async start() {
         this.pauseTimer = 0; 
 
         try {
+            this.init();
             await this.setTime();            
         }
         catch (err) {
@@ -205,7 +209,9 @@ export default class DeviceReader {
         catch {           
         }
 
-        this.startLoop();   
+        setTimeout(() => {
+            this.startLoop();
+        },2000);
 
         this.loopTimer = setInterval(() => {
 
@@ -242,7 +248,9 @@ export default class DeviceReader {
                     this.wakeUp().then(() => {
                         this.dataReceived = this.gotLoop;
                         this.port.write('LOOP ' + this.config.loopCount.toString() + '\n');
-                    }).catch ()
+                    }).catch(err => {
+                        Common.Logger.error(err);
+                    })
 
                 }).catch(err => {
                     Common.Logger.error(err);
@@ -256,13 +264,15 @@ export default class DeviceReader {
 
     }
 
-    gotLoop(data) {
-        console.log('got loop');
+    gotLoop(data) {       
         this.lastLoop = new Date();
         if (this.validateLoop(data)) {
             this.current = new VPCurrent(data);
-            //console.log('gotLoop current:', this.current.temperature);
+            console.log('gotLoop current:', this.current.temperature);
             this.currentReceived();
+        }
+        else {
+            Common.Logger.error('Loop data invalid');
         }
     }
 
@@ -331,7 +341,7 @@ export default class DeviceReader {
                 received = data.length;
 
                 if (data.length == 99) {
-                    //console.log('wakeup got LOOP data');                   
+                    console.log('wakeup got LOOP data');                           
                 }
                 else {
                     if (data && received == 2 && data[0] == 10 && data[1] == 13) {
@@ -340,13 +350,15 @@ export default class DeviceReader {
                         resolve(true);
                     }
                     else {
-                        if (attempts > 2) {
+                        if (attempts > 3) {
                             this.isBusy = false;
                             clearInterval(waitintv);
+                            console.log('wakeup failed after 3 attempts');
                             reject(false);                           
                         }
                         else
                             setTimeout(() => {
+                                attempts++;
                                 this.port.write('\n');
                             }, 2000);
 
@@ -366,9 +378,8 @@ export default class DeviceReader {
             this.port.write('\n');              //send wakeup
 
             waitintv = setInterval(() => {
-                if (received == 0) {
-                    attempts++;
-                    if (attempts < 2) {
+                if (received != 2) {                
+                    if (attempts < 3) {
                         console.log('retrying wakeup')
                         this.port.write('\n');
                     }
@@ -393,20 +404,24 @@ export default class DeviceReader {
             let archives;
             let cmd = startDate != null ? 'DMPAFT' : 'DMP';
             try {
-                this.pauseLoop(30);
+                this.pauseLoop(300);
                 this.sendArchiveCmd(cmd).then(result => {
                     if (startDate) {
                         let ts = DeviceReader.getArchiveTS(startDate);
                         this.getSerial(ts, 6, true).then(tsresult => {
+                            this.isBusy = true; 
                             this.retrieveArchive(tsresult, false).then(archives => {
                                 this.pauseTimer = 0;
+                                this.isBusy = false;
                                 resolve(archives);
                             });
                         });
                     }
                     else {
+                        this.isBusy = true;
                         this.retrieveArchive(result, false).then(archives => {
                             this.pauseTimer = 0;
+                            this.isBusy = false;
                             resolve(archives);
                         });
                     }
@@ -417,6 +432,7 @@ export default class DeviceReader {
                 Common.Logger.error(err);
                 this.errorReceived(err);
                 this.pauseTimer = 0;
+                this.isBusy = false;
                 reject(err);
             }            
         });
