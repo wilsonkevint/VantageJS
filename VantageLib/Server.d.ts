@@ -20,6 +20,7 @@ export default class Server {
     sendCurrent(): void;
     sendHiLows(): void;
     sendAlerts(): void;
+    sendAll(evt: any, obj: any): void;
     getCsv(archives: any): any[];
     getRainDay(period: any): any;
 }

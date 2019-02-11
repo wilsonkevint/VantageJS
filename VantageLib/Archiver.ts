@@ -11,6 +11,9 @@ export default class Archiver {
     config: any;
     database: Database;
     socket: ClientSocket;
+    lastId: number;
+    inserted: number;
+    archives: Array<VPArchive>;
 
     constructor() {
         this.config = require('./VantageJS.json');;
@@ -21,44 +24,59 @@ export default class Archiver {
 
         if (this.socket == null) {
             this.socket = new ClientSocket();
-            this.socket.start();
+            await this.socket.startAsync();
         }
-        
-        let promise = new Promise(async (resolve, reject) => {
-            try {
-                await this.database.connect();
-                let last: VPArchive = await this.database.getLast('archive');
-                let lastDt = last ? last.archiveDate + ' ' + last.archiveTime : null;
-                let lastId = last ? last._id : 0;
 
-                let data = await this.getArchives(lastDt);
-                let archives: Array<VPArchive> = JSON.parse(data);
-                let inserted = 0; 
+        await this.database.connect();
+        let last: VPArchive = await this.database.getLast('archive');
+        let lastDt = last ? last.archiveDate + ' ' + last.archiveTime : null;
+        this.lastId = last ? last._id : 0;
 
-                archives.forEach(async (a: VPArchive) => {
-                    a._id = moment(a.archiveDate + ' ' + a.archiveTime, 'MM/DD/YYYY HH:mm').unix();
+        let data = await this.getArchives(lastDt);
 
-                    if (a._id > lastId) {
-                        inserted++;
-                        this.database.insert('archive', a).then(() => {
-                            Common.Logger.info('archived: ' + a.archiveDate);
-                        }).catch(err => {
-                            Common.Logger.error(err);
-                        });
-                    }
-                });
+        try {
 
-                Common.Logger.info('inserted ' + inserted + ' archive rows');
-            }
-            catch (err) {
+            this.archives = JSON.parse(data);
+            let idx = -1;
+            this.inserted = 0;
+
+            this.insertArchives(idx);
+
+            Common.Logger.info('inserted ' + this.inserted + ' archive rows');
+        }
+        catch (err) {
+            Common.Logger.error(err);
+            this.socket.socketEmit('error', 'Archiver:' + err);
+        }
+    }
+
+    insertArchives(idx) {
+        idx++;
+        if (idx == this.archives.length) {
+            return;
+        }
+
+        let a: VPArchive = this.archives[idx];
+        a._id = moment(a.archiveDate + ' ' + a.archiveTime, 'MM/DD/YYYY HH:mm').unix();    
+
+        if (a._id > this.lastId) {
+            this.database.insert('archive', a).then(() => {               
+                this.inserted++;
+                this.insertArchives(idx);
+                this.socket.socketEmit('archive', a.archiveDate.toString() + ' ' + a.archiveTime.toString());
+            }).catch(err => {
                 Common.Logger.error(err);
-                this.socket.socketEmit('error', 'Archiver:' + err);
-            }
-            
-        });
+                this.insertArchives(idx);
+            });
+        }
+        else {
+            this.insertArchives(idx);
+        }
 
-        return promise;
-    }  
+       
+    }
+
+
 
     async getArchives(lastdate) {
         let path = '/archives';

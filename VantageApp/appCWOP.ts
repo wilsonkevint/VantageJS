@@ -7,29 +7,39 @@ const moment = require('moment');
 Common.Logger.init('cwop.log');
 Common.Logger.info('started'); 
 
-const cwop = new CWOP(); 
 const socket = new ClientSocket();
+const cwop = new CWOP(socket); 
 let current: VPCurrent;
 
-socket.start(); 
+let begin = async () => {
+    await cwop.queryEngine.connectDB(); 
+    await socket.startAsync();   
 
-socket.subscribeCurrent((vpcur) => {
-    current = vpcur;
-});
+    await cwop.updateFromArchive();
 
-socket.subscribeHiLow(async (hilows) => {
-    try {
-       
-        if (current) {
+    socket.subscribeCurrent((vpcur) => {
+        current = vpcur;
+    });
+
+    socket.subscribeHiLow(async (hilows) => {
+        try {          
             await cwop.updateFromArchive();
-            //let rain = await cwop.queryEngine.getRainTotals(moment());
-            //hilows.rain24hour = rain.last24;
-            //hilows.rain1hour = rain.hourly;
-            //cwop.update(current, hilows).catch(err => socket.socketEmit('error', 'cwop:' + err));
+
+            if (current) {
+                let rain = await cwop.queryEngine.getRainTotals(moment());
+                hilows.rain24hour = rain.last24;
+                hilows.rain1hour = rain.hourly;
+                cwop.update(current, hilows).catch(err => socket.socketEmit('error', 'cwop:' + err));
+            }
         }
-    }
-    catch (err) {
-        Common.Logger.error(err);
-        socket.socketEmit('error', 'cwop:' + err);
-    }
-});
+        catch (err) {
+            Common.Logger.error(err);
+            socket.socketEmit('error', 'cwop:' + err);
+        }
+    });    
+};
+
+begin();
+
+ 
+ 

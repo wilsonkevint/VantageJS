@@ -69,9 +69,19 @@ export default class Server {
             });
 
             socket.on('error', (err) => {
-                this.clients.forEach(client => {
-                    client.emit('error', err);
-                });
+                this.sendAll('error', err);
+            });
+
+            socket.on('archive', (dt) => {
+                this.sendAll('archive', dt);
+            });
+
+            socket.on('cwop', (dt) => {
+                this.sendAll('cwop', dt);
+            });
+
+            socket.on('updatewu', (dt) => {
+                this.sendAll('updatewu', dt);
             });
 
 
@@ -260,6 +270,12 @@ export default class Server {
     sendAlerts() {
         this.clients.forEach(client => {
             client.emit('alerts', this.alerts);
+        });
+    }
+
+    sendAll(evt, obj) {
+        this.clients.forEach(client => {
+            client.emit(evt,obj);
         });
     }
 

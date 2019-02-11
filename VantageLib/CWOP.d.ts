@@ -1,6 +1,7 @@
 import VPCurrent from './VPCurrent';
 import VPHiLow from './VPHiLow';
 import QueryEngine from './QueryEngine';
+import ClientSocket from './ClientSocket';
 export default class CWOP {
     config: any;
     current: VPCurrent;
@@ -8,10 +9,11 @@ export default class CWOP {
     hilows: VPHiLow;
     cwopUpdated: boolean;
     queryEngine: QueryEngine;
-    constructor();
+    socket: ClientSocket;
+    constructor(socket: ClientSocket);
     update(current: VPCurrent, hilows: VPHiLow): Promise<{}>;
     dataReceived(data: any): void;
     formatNum(num: any, len: any): string | number;
-    updateFromArchive(): Promise<{}>;
+    updateFromArchive(): Promise<void>;
 }
 //# sourceMappingURL=CWOP.d.ts.map

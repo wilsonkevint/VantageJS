@@ -4,9 +4,10 @@ import ClientSocket from '../VantageLib/ClientSocket';
 Common.Logger.init('wu.log');
 Common.Logger.info('started');
 
-let wu = new Wunderground(); 
+
 
 let socket = new ClientSocket();
+let wu = new Wunderground(socket); 
 
 wu.database.connect().then(() => {
     socket.start();

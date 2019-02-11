@@ -8,16 +8,19 @@ import WeatherAlert from './WeatherAlert';
 import VPCurrent from './VPCurrent';
 import VPArchive from './VPArchive';
 import VPHiLow from './VPHiLow';
+import ClientSocket from './ClientSocket';
 
 import * as Common from './Common';
 
 export default class Wunderground {
     config: any;
     database: Database;
+    socket: ClientSocket;
      
-    constructor() {
+    constructor(socket) {
         this.config = require('./VantageJS.json');
         this.database = new Database();
+        this.socket = socket;
     }    
 
     async getAlerts() {
@@ -89,12 +92,12 @@ export default class Wunderground {
                     var timeStamp = current.wuUpdated.unix(); 
 
                     if (resultData.startsWith('success')) {
+                        this.socket.socketEmit('updatewu', current.wuUpdated);
                         this.database.find('wuUpdated', { _id: 1 }).next().then(wuUpd => {
                             if (wuUpd.lastUpdate < timeStamp) {
                                 this.database.update('wuUpdated', { _id: 1, lastUpdate: timeStamp }, true).then(() => {
                                 }, err => {
-                                    Common.Logger.error(err);
-                                    process.exit(-1);
+                                    Common.Logger.error(err);                                    
                                 });
                             }
                         });

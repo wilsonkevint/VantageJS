@@ -7,6 +7,7 @@ import VPArchive from './VPArchive';
 import * as Common from './Common';
 import Database from './Database';
 import QueryEngine from './QueryEngine';
+import ClientSocket from './ClientSocket';
 
 export default class CWOP {
     config: any;   
@@ -15,13 +16,15 @@ export default class CWOP {
     hilows: VPHiLow;
     cwopUpdated: boolean;
     queryEngine: QueryEngine;
+    socket: ClientSocket;
 
-    constructor() {
+    constructor(socket: ClientSocket) {
         this.config = require('./VantageJS.json');
         this.queryEngine = new QueryEngine();
+        this.socket = socket;
     }
      
-    async update(current: VPCurrent, hilows: VPHiLow) {       
+    update(current: VPCurrent, hilows: VPHiLow) {       
         var Util = Common.Util;       
         this.cwopUpdated = false;
         this.current = current;
@@ -38,7 +41,9 @@ export default class CWOP {
                 this.client.on('data', data => {
                     this.dataReceived(data);
                     if (this.cwopUpdated) {
-                        this.queryEngine.database.update('cwopUpdated', {_id:1,lastUpdate:moment().unix()}, true);
+                        let now = moment();
+                        this.queryEngine.database.update('cwopUpdated', { _id: 1, lastUpdate: now.unix() }, true);
+                        this.socket.socketEmit('cwop', now.format('MM/DD/YYYY HH:mm:ss'));
                         resolve();
                     }
                 });
@@ -94,7 +99,7 @@ export default class CWOP {
                 Common.Logger.error(ex);
             }
 
-            setInterval(() => { this.client.destroy(); }, 5000);
+            //setInterval(() => { this.client.destroy(); }, 5000);
            
         }        
     }
@@ -106,21 +111,22 @@ export default class CWOP {
     async updateFromArchive() {
         let lastDt = null;
         let dayRain;
-        let promise = new Promise(async (resolve, reject) => {
-            try {
-                let database = new Database();
-                let queryEngine = new QueryEngine(database);
-                await database.connect();
-                let updated = await database.find('cwopUpdated', { _id: 1 }).next();
-                if (updated == null) {
-                    updated = await database.find('wuUpdated', { _id: 1 }).next();
-                }
-                if (updated != null) {
-                    let csr = database.sort('archive', { _id: { $gt: updated.lastUpdate } }, { _id: 1 });
+        let updated = await this.queryEngine.database.find('cwopUpdated', { _id: 1 }).next();
 
-                    let archives = await csr.toArray();
+        if (updated == null) {
+            return;
+        }
 
-                    archives.forEach(async (arch: VPArchive) => {
+        let csr = this.queryEngine.database.sort('archive', { _id: { $gt: updated.lastUpdate } }, { _id: 1 });
+        let archives = await csr.toArray();
+
+        try {
+
+            if (updated != null) {
+
+                await (async () => {
+                    for (var a = 0; a < archives.length; a++) {
+                        let arch = archives[a];
                         if (!lastDt || lastDt != arch.archiveDate) {
                             dayRain = 0;
                             lastDt = arch.archiveDate;
@@ -140,28 +146,32 @@ export default class CWOP {
                             curr.windSpeed = arch.windHi;
                             curr.dewpoint = VPCurrent.fDewpoint(curr.temperature, curr.humidity);
                             curr.dateLoaded = moment(arch.archiveDate + ' ' + arch.archiveTime, "MM/DD/yyyy HH:mm").toDate();
-                            Common.Logger.info('updateFromArchive:', curr.wuUpdated.toString());
 
                             let hilows = new VPHiLow(null);
-                            let rain = await queryEngine.getRainTotals(curr.wuUpdated);
+                            let rain = await this.queryEngine.getRainTotals(curr.wuUpdated);
                             hilows.rain24hour = rain.last24;
                             hilows.rain1hour = rain.hourly;
-                            this.update(curr, hilows);
 
+                            try {
+                                await this.update(curr, hilows);
+                                Common.Logger.info('updateFromArchive:', curr.dateLoaded.toString());
+                            }
+                            catch (err) {
+                                Common.Logger.error(err);
+                            }
                         }
-                    });
+                    }
+                })();
 
-                    resolve();
-                }
+                console.log('finished');
+
             }
-            catch (err) {
-                Common.Logger.error(err);
-                reject(err);
-            }
-
-        });
-
-        return promise;
+        }
+        catch (err) {
+            Common.Logger.error(err);
+            throw err;
+        }
+       
 
     }
 

@@ -12,19 +12,29 @@ export default class ClientSocket {
     public constructor(client:string = 'wsclient') {
         this.config = require('./VantageJS.json');
         this.client = client;
+        this.eventEmitter = new EventEmitter();    
     }
 
-    start() {       
-        this.eventEmitter = new EventEmitter();      
+    start() {                 
         this.getSocket();        
     }
 
-    getSocket() {       
+    startAsync() {
+        return new Promise((resolve,reject) => {
+            this.getSocket(
+                () => resolve(),
+                err => reject(err));
+        });
+    }
+
+    
+    getSocket(connectCB=null,errorCB=null) {       
         this.socket = io(this.config.socketUrl, { query: { client: this.client } });
         console.log('socket url:' + this.config.socketUrl); 
 
         this.socket.on('connect', () => {
             console.log('ClientSocket connected');
+            connectCB && connectCB(0);
             this.socket.on('current', current => {
                 this.emitEvent('current', JSON.parse(current));
             });
@@ -43,7 +53,11 @@ export default class ClientSocket {
                     this.emitEvent('alerts', alerts);
                 }
             });        
-        });          
+        });  
+
+        this.socket.on('error', error => {
+            errorCB && errorCB(error);
+        });
     }
     
     emitEvent(name: string, obj: any) {

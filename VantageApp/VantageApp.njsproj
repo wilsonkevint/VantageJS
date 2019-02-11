@@ -12,7 +12,7 @@
     <SchemaVersion>2.0</SchemaVersion>
     <ProjectGuid>9e08bddd-c5ce-41c7-9e9c-5979fdd8a82c</ProjectGuid>
     <ProjectHome>.</ProjectHome>
-    <StartupFile>appVantage.ts</StartupFile>
+    <StartupFile>appArchiver.ts</StartupFile>
     <StartWebBrowser>False</StartWebBrowser>
     <SearchPath>
     </SearchPath>
@@ -43,6 +43,11 @@
     </TypeScriptCompile>
     <TypeScriptCompile Include="appVantage.ts" />
     <TypeScriptCompile Include="appWebUpd.ts" />
+  </ItemGroup>
+  <ItemGroup>
+    <Compile Include="test.js">
+      <SubType>Code</SubType>
+    </Compile>
   </ItemGroup>
   <!-- Do not delete the following Import Project.  While this appears to do nothing it is a marker for setting TypeScript properties before our import that depends on them. -->
   <Import Project="$(MSBuildExtensionsPath32)\Microsoft\VisualStudio\v$(VisualStudioVersion)\TypeScript\Microsoft.TypeScript.targets" Condition="False" />
