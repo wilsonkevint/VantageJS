@@ -2,6 +2,8 @@
 import * as Common from '../VantageLib/Common';
 import ClientSocket from './ClientSocket';
 import VPCurrent from '../VantageLib/VPCurrent';
+import Wunderground from './Wunderground';
+import { setImmediate } from 'timers';
 const os = require('os');
 const moment = require('moment');
 const Http = require('http');
@@ -15,6 +17,7 @@ export default class VantageVue {
     socket: ClientSocket;
     config: any;
     server: any; 
+    forecast: any;
 
     public constructor() {
         this.config = require('./VantageJS.json');
@@ -46,7 +49,17 @@ export default class VantageVue {
 
         this.device.hilowReceived = () => {
             this.hilows = this.device.hilows;
-            this.socket.socketEmit('hilows', this.hilows);
+            this.getForecast().then(forecast => {
+                this.forecast = forecast;
+                this.hilows.forecast = this.forecast;
+                this.socket.socketEmit('hilows', this.hilows);
+            }).catch(err => {
+                Common.Logger.error(err);
+                this.socket.socketEmit('hilows', this.hilows);
+                });
+
+          
+            
         };
 
         this.device.errorReceived = (err) => {
@@ -56,7 +69,12 @@ export default class VantageVue {
         this.server = Http.createServer((req, res) => { this.requestReceived(req, res) });       
 
         this.server.listen(this.config.webPort);
-        console.log('web server listening on ' + this.config.webPort);
+        console.log('web server listening on ' + this.config.webPort);        
+
+        this.getForecast().then(forecast => {
+            this.forecast = forecast;
+        });
+       
     }
 
     requestReceived(req, res) {
@@ -84,6 +102,24 @@ export default class VantageVue {
             res.end('no method');
         }
     }
-} //?dt=
+
+    getForecast(): any {
+        var last;
+        var promise;
+
+        if (this.forecast) {
+            last = VPCurrent.timeDiff(this.forecast.last, 'h');
+        }
+
+        if (!last || last >= 2 || (this.forecast.periods.length && !this.forecast.periods[0].fcttext)) {
+            promise = Wunderground.getForecast(this.config);
+        }
+        else {
+            promise = Promise.resolve(this.forecast);
+        }
+
+        return promise;
+    }
+} 
 
 

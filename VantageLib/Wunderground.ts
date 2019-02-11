@@ -124,9 +124,8 @@ export default class Wunderground {
         }
     }
 
-    getForecast(): any {        
-        var config = this.config; 
-
+    static getForecast(config): any {        
+      
         if (!config.forecastUrl) {
             return;
         }

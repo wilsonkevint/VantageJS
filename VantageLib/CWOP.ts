@@ -104,9 +104,9 @@ export default class CWOP {
     }
 
     async updateFromArchive() {
-        var lastDt = null;
-        var dayRain;
-        var promise = new Promise(async (resolve, reject) => {
+        let lastDt = null;
+        let dayRain;
+        let promise = new Promise(async (resolve, reject) => {
             try {
                 let database = new Database();
                 let queryEngine = new QueryEngine(database);
@@ -116,7 +116,7 @@ export default class CWOP {
                     updated = await database.find('wuUpdated', { _id: 1 }).next();
                 }
                 if (updated != null) {
-                    var csr = database.sort('archive', { _id: { $gt: updated.lastUpdate } }, { _id: 1 });
+                    let csr = database.sort('archive', { _id: { $gt: updated.lastUpdate } }, { _id: 1 });
 
                     let archives = await csr.toArray();
 

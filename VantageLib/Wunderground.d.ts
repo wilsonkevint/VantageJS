@@ -7,7 +7,7 @@ export default class Wunderground {
     constructor();
     getAlerts(): Promise<WeatherAlert[]>;
     upload(current: VPCurrent): void;
-    getForecast(): any;
+    static getForecast(config: any): any;
     updateFromArchive(): Promise<{}>;
 }
 //# sourceMappingURL=Wunderground.d.ts.map

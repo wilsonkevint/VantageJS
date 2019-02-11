@@ -91,8 +91,7 @@ export default class DeviceReader {
                     this.getSerial("HILOWS", 438, true).then(data => {
                         if (DeviceReader.validateCRC(data, 0)) {
                             this.hilows = new VPHiLow(data);
-                            this.hilowReceived();
-                            console.log('got hilows');
+                            this.hilowReceived();                            
                             resolve();
                         }
 
@@ -209,9 +208,7 @@ export default class DeviceReader {
         catch {           
         }
 
-        setTimeout(() => {
-            this.startLoop();
-        },2000);
+        this.startLoop();
 
         this.loopTimer = setInterval(() => {
 
@@ -239,15 +236,17 @@ export default class DeviceReader {
 
         if (this.pauseTimer === 0) {
 
-            if (this.current == null || VPBase.timeDiff(this.current.dateLoaded, 's') > 6) {
+            if (this.current == null || VPBase.timeDiff(this.current.dateLoaded, 's') > 10) {
                 //console.log('startLoop1');
 
                 this.isAvailable().then(() => {
                     console.log('startLoop2');                  
 
                     this.wakeUp().then(() => {
+
                         this.dataReceived = this.gotLoop;
                         this.port.write('LOOP ' + this.config.loopCount.toString() + '\n');
+
                     }).catch(err => {
                         Common.Logger.error(err);
                     })
@@ -354,13 +353,11 @@ export default class DeviceReader {
                             this.isBusy = false;
                             clearInterval(waitintv);
                             console.log('wakeup failed after 3 attempts');
-                            reject(false);                           
+                            reject(false);
                         }
-                        else
-                            setTimeout(() => {
-                                attempts++;
-                                this.port.write('\n');
-                            }, 2000);
+                        else {                           
+                            this.port.write('\n');
+                        }
 
                         attempts++;
                     }

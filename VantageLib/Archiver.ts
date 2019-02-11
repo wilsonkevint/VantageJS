@@ -39,11 +39,12 @@ export default class Archiver {
                     a._id = moment(a.archiveDate + ' ' + a.archiveTime, 'MM/DD/YYYY HH:mm').unix();
 
                     if (a._id > lastId) {
+                        inserted++;
                         this.database.insert('archive', a).then(() => {
-                            inserted++;
+                            Common.Logger.info('archived: ' + a.archiveDate);
                         }).catch(err => {
                             Common.Logger.error(err);
-                        });                        
+                        });
                     }
                 });
 

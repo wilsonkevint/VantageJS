@@ -8,8 +8,10 @@ export default class VantageVue {
     socket: ClientSocket;
     config: any;
     server: any;
+    forecast: any;
     constructor();
     start(): void;
     requestReceived(req: any, res: any): void;
+    getForecast(): any;
 }
 //# sourceMappingURL=VantageVue.d.ts.map

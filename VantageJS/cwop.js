@@ -1,8 +1,8 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
+var net = require('net');
+var moment = require('moment');
 const Common = require("./Common");
-const net = require('net');
-const moment = require('moment');
 class CWOP {
     constructor(config) {
         this.config = require('./VantageJS.json');
