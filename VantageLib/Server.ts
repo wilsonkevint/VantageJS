@@ -43,13 +43,13 @@ export default class Server {
             console.log('socket connection started');
             this.clients.push(socket);
 
-            socket.on('alerts', async (alerts) => {
-                this.alerts = alerts;
+            socket.on('alerts', (alerts) => {
+                this.alerts = JSON.parse(alerts);
                 this.sendAlerts();
             });
 
             socket.on('current', current => {
-                this.current = current;
+                this.current = JSON.parse(current);
                 if (this.vp1current) {
                     var dateLoaded = moment(this.vp1current, 'yyyy-mm-ddTHH:MM:ss');
                     if (VPCurrent.timeDiff(dateLoaded.toDate(), 'm') < 6) {
@@ -60,12 +60,15 @@ export default class Server {
             });
 
             socket.on('hilows', hilows => {
-                this.hilows = hilows;
+                this.hilows = JSON.parse(hilows);
                 this.sendHiLows();
+                if (this.alerts && this.alerts.length) {
+                    this.sendAlerts();
+                }
             });
 
             socket.on('vp1_current', (current) => {               
-                this.vp1current = current;
+                this.vp1current = JSON.parse(current);
             });
 
             socket.on('error', (err) => {
@@ -193,18 +196,21 @@ export default class Server {
             else if (req.url == '/alexa') {
                 res.writeHead(200, hdr);
                 try {
-                    var forecast = this.hilows.forecast.periods[0].fcttext.replace(new RegExp('\\d{1,3}F'), t => {
-                        return t.replace('F', ' degrees');
-                    });
-                    var patt = new RegExp('Winds (N|NNE|NE|ENE|E|ESE|SE|SSE|S|SSW|SW|WSW|W|WNW|NW|NNW)');
-                    forecast = forecast.replace(patt, dir => {
-                        dir = dir.substr(6)
-                            .replace(new RegExp('N', 'g'), ' North')
-                            .replace(new RegExp('E', 'g'), ' East')
-                            .replace(new RegExp('S', 'g'), ' South')
-                            .replace(new RegExp('W', 'g'), ' West')
-                        return 'Winds ' + dir;
-                    });
+                    let forecast=null;
+                    if (this.hilows && this.hilows.forecast) {
+                        forecast = this.hilows.forecast.periods[0].fcttext.replace(new RegExp('\\d{1,3}F'), t => {
+                            return t.replace('F', ' degrees');
+                        });
+                        var patt = new RegExp('Winds (N|NNE|NE|ENE|E|ESE|SE|SSE|S|SSW|SW|WSW|W|WNW|NW|NNW)');
+                        forecast = forecast.replace(patt, dir => {
+                            dir = dir.substr(6)
+                                .replace(new RegExp('N', 'g'), ' North')
+                                .replace(new RegExp('E', 'g'), ' East')
+                                .replace(new RegExp('S', 'g'), ' South')
+                                .replace(new RegExp('W', 'g'), ' West')
+                            return 'Winds ' + dir;
+                        });
+                    }
 
                     var obj = {
                         humidity: this.current.humidity.toFixed(0) + ' percent',
@@ -214,7 +220,7 @@ export default class Server {
                         forecast: forecast,
                         sunrise: this.current.sunrise,
                         sunset: this.current.sunset,
-                        alerts: this.alerts.length ? this.alerts[0].message : 'none',
+                        alerts: this.alerts && this.alerts.length ? this.alerts[0].message : 'none',
                         temperature: this.current.temperature.toFixed(0) + ' degrees',
                         "inside temperature": this.current.inTemperature.toFixed(0) + ' degrees',
                         "rain": {

@@ -20,7 +20,7 @@ export default class VPCurrent extends VPBase {
         this.inHumidity = this.nextByte();
         this.temperature = this.fTemperature();
         this.windSpeed = this.nextByte();
-        this.windAvg = this.nextByte();
+        this.windAvg = this.nextByte();       
         this.windDir = this.nextDecimal();
         this.windDirection = this.fWindDirection(this.windDir);
 
@@ -51,6 +51,13 @@ export default class VPCurrent extends VPBase {
         this.sunset = this.nextTime();
         this.windChill = this.fWindChill();
         this.dateLoaded = new Date();
+
+        if (this.windSpeed == 255) {
+            this.windSpeed = 0;
+        }
+        if (this.windAvg == 255) {
+            this.windAvg = 0;
+        }
 
         this._data = null;
     }

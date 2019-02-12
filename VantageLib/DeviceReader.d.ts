@@ -1,6 +1,8 @@
+/// <reference types="node" />
 import VPArchive from '../VantageLib/VPArchive';
 import VPCurrent from '../VantageLib/VPCurrent';
 import VPHiLow from '../VantageLib/VPHiLow';
+import { EventEmitter } from 'events';
 export default class DeviceReader {
     config: any;
     port: any;
@@ -8,14 +10,14 @@ export default class DeviceReader {
     pauseTimer: any;
     lastLoop: any;
     dataReceived: any;
-    errorReceived: any;
     loopTimer: any;
     hiLowTimer: any;
-    currentReceived: any;
-    hilowReceived: any;
     current: VPCurrent;
     hilows: VPHiLow;
+    eventEmitter: EventEmitter;
     constructor();
+    emitEvent(name: string, obj: any): void;
+    errorReceived(err: any): void;
     getSerial(cmd: any, reqchars: number, expectAck: boolean): Promise<Uint8Array>;
     getHiLows(): Promise<any>;
     isAvailable(): Promise<boolean>;
@@ -31,6 +33,10 @@ export default class DeviceReader {
     static getArchiveTS(startDate: string): any[];
     retrieveArchive(buffer: any, allPages: any): Promise<VPArchive[]>;
     sendArchiveCmd(cmd: any): Promise<Uint8Array>;
+    subscribeCurrent(listener: any): void;
+    subscribeHiLow(listener: any): void;
+    subscribeAlert(listener: any): void;
+    subscribeError(listener: any): void;
     validateLoop(data: any): boolean;
     static validateCRC(data: Uint8Array, start: any): boolean;
     static getCRC(data: any): any;

@@ -5,6 +5,7 @@ import VPArchive from '../VantageLib/VPArchive';
 import VPCurrent from '../VantageLib/VPCurrent';
 import VPHiLow from '../VantageLib/VPHiLow';
 import { setInterval, clearInterval, setTimeout } from 'timers';
+import { EventEmitter } from 'events';
 const SerialPort = require("serialport");
  
 export default class DeviceReader {
@@ -13,21 +14,33 @@ export default class DeviceReader {
     isBusy: boolean;    
     pauseTimer: any;
     lastLoop: any;
-    dataReceived: any;
-    errorReceived: any;
+    dataReceived: any;    
     loopTimer: any;    
-    hiLowTimer: any;
-    currentReceived: any;
-    hilowReceived: any;
+    hiLowTimer: any;    
     current: VPCurrent;
     hilows: VPHiLow;
+    eventEmitter: EventEmitter;
    
     public constructor() {
 
         this.config = require('./VantageJS.json');        
+        this.eventEmitter = new EventEmitter();   
 
         console.log('loopInterval:' + this.config.hilowInterval);
         console.log('hilowInterval:' + this.config.hilowInterval)
+    }
+
+    emitEvent(name: string, obj: any) {
+        try {
+            this.eventEmitter.emit(name, obj);
+        }
+        catch (e) {
+            Common.Logger.error(e);
+        }
+    }
+
+    errorReceived(err) {
+        this.emitEvent('error', err);
     }
 
     getSerial(cmd: any, reqchars: number, expectAck: boolean): Promise<Uint8Array> {
@@ -63,12 +76,7 @@ export default class DeviceReader {
                     resolve(new Uint8Array(received));
                 }
             }
-
-            this.errorReceived = err => {
-                this.isBusy = false;
-                reject(err);
-            }
-
+         
             if (typeof cmd == 'string')
                 this.port.write(cmd + '\n');
             else {
@@ -91,24 +99,24 @@ export default class DeviceReader {
                     this.getSerial("HILOWS", 438, true).then(data => {
                         if (DeviceReader.validateCRC(data, 0)) {
                             this.hilows = new VPHiLow(data);
-                            this.hilowReceived();                            
+                            this.emitEvent('hilows', this.hilows);                            
                             resolve();
                         }
 
                     }).catch(err => {
                         Common.Logger.error(err);
-                        this.errorReceived && this.errorReceived(err);
+                       this.errorReceived(err);
                         reject();
                     });
                 }).catch(err => {
                     Common.Logger.error(err);
-                    this.errorReceived && this.errorReceived(err);
+                   this.errorReceived(err);
                     reject();
                 });
 
             }, err => {
                 Common.Logger.error('hilows device not available');
-                this.errorReceived && this.errorReceived(err);
+               this.errorReceived(err);
                 reject();
             });
         });
@@ -180,7 +188,7 @@ export default class DeviceReader {
 
         this.port.on('error', err => {
             this.isBusy = false;
-            this.errorReceived && this.errorReceived(err);
+           this.errorReceived(err);
             Common.Logger.error(err.message);
         });
 
@@ -225,7 +233,7 @@ export default class DeviceReader {
             catch (err) {
                 this.pauseTimer = 0;
                 Common.Logger.error(err);
-                this.errorReceived && this.errorReceived(err);
+               this.errorReceived(err);
             }
            
         }, this.config.hilowInterval);               
@@ -253,7 +261,7 @@ export default class DeviceReader {
 
                 }).catch(err => {
                     Common.Logger.error(err);
-                    this.errorReceived && this.errorReceived(err);
+                   this.errorReceived(err);
                 });
             }
         }
@@ -268,7 +276,7 @@ export default class DeviceReader {
         if (this.validateLoop(data)) {
             this.current = new VPCurrent(data);
             console.log('gotLoop current:', this.current.temperature);
-            this.currentReceived();
+            this.emitEvent('current', this.current);
         }
         else {
             Common.Logger.error('Loop data invalid');
@@ -363,14 +371,7 @@ export default class DeviceReader {
                     }
                 }
 
-            }
-
-            this.errorReceived = err => {
-                this.isBusy = false;
-                clearInterval(waitintv);
-                this.errorReceived && this.errorReceived(err);
-                reject('errorRec:' + err);
-            }
+            }            
 
             this.port.write('\n');              //send wakeup
 
@@ -526,6 +527,42 @@ export default class DeviceReader {
         catch (err) {
             Common.Logger.error(err);
             throw err;
+        }
+    }
+
+    subscribeCurrent(listener: any) {
+        try {
+            this.eventEmitter.on('current', listener);
+        }
+        catch (e) {
+            Common.Logger.error(e);
+        }
+    }
+
+    subscribeHiLow(listener: any) {
+        try {
+            this.eventEmitter.on('hilows', listener);
+        }
+        catch (e) {
+            Common.Logger.error(e);
+        }
+    }
+
+    subscribeAlert(listener: any) {
+        try {
+            this.eventEmitter.on('alert', listener);
+        }
+        catch (e) {
+            Common.Logger.error(e);
+        }
+    }
+
+    subscribeError(listener: any) {
+        try {
+            this.eventEmitter.on('error', listener);
+        }
+        catch (e) {
+            Common.Logger.error(e);
         }
     }
 

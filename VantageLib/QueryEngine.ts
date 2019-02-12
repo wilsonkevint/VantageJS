@@ -109,8 +109,7 @@ export default class QueryEngine {
     }
 
     async getRainTotals(dt):Promise<any> {        
-        let yday = moment(dt).add(-1, 'days').unix();
-        //console.log('getRainTotals for ' + dt.toString());
+        let yday = moment(dt).add(-1, 'days').unix();     
         let hourAgo = moment(dt).add(-1, 'hour').unix();
         let tot24rain: number = 0;
         let hourlyrain: number = 0;      

@@ -35,8 +35,8 @@ export default class VantageVue {
         this.socket = new ClientSocket();
         this.socket.start();
 
-        this.device.currentReceived = () => {
-            this.current = this.device.current;
+        this.device.subscribeCurrent((current) => {
+            this.current = current;
 
             if (this.vp1current) {
                 var dateLoaded = moment(this.vp1current, 'yyyy-mm-ddTHH:MM:ss');
@@ -44,11 +44,11 @@ export default class VantageVue {
                     this.current.temperature = this.vp1current.temperature;
                 }
             }
-            this.socket.socketEmit('current', this.current);            
-        }
+            this.socket.socketEmit('current', this.current);
+        });
 
-        this.device.hilowReceived = () => {
-            this.hilows = this.device.hilows;
+        this.device.subscribeHiLow((hilows) => {
+            this.hilows = hilows;
             this.getForecast().then(forecast => {
                 this.forecast = forecast;
                 this.hilows.forecast = this.forecast;
@@ -56,15 +56,12 @@ export default class VantageVue {
             }).catch(err => {
                 Common.Logger.error(err);
                 this.socket.socketEmit('hilows', this.hilows);
-                });
+            });
+        });
 
-          
-            
-        };
-
-        this.device.errorReceived = (err) => {
+        this.device.subscribeError( (err) => {
             this.socket.socketEmit('error', 'VantageVue:' + err);
-        };
+        });
 
         this.server = Http.createServer((req, res) => { this.requestReceived(req, res) });       
 
@@ -97,6 +94,15 @@ export default class VantageVue {
             }).catch(err => {
                 res.end(err);
             });
+        }
+        else if (req.url == '/current') {
+            res.end(JSON.stringify(this.current));
+        }
+        else if (req.url == '/hilows') {
+            res.end(JSON.stringify(this.hilows));
+        }
+        else if (req.url == '/forecast') {
+            res.end(JSON.stringify(this.forecast));
         }
         else {
             res.end('no method');

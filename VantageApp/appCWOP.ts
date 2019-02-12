@@ -23,13 +23,12 @@ let begin = async () => {
 
     socket.subscribeHiLow(async (hilows) => {
         try {          
-            await cwop.updateFromArchive();
-
+           
             if (current) {
                 let rain = await cwop.queryEngine.getRainTotals(moment());
                 hilows.rain24hour = rain.last24;
                 hilows.rain1hour = rain.hourly;
-                cwop.update(current, hilows).catch(err => socket.socketEmit('error', 'cwop:' + err));
+                await cwop.update(current, hilows);
             }
         }
         catch (err) {

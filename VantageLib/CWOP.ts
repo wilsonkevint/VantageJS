@@ -1,6 +1,6 @@
 ﻿declare function require(name: string);
-var net = require('net');
-var moment = require('moment');
+let net = require('net');
+let moment = require('moment');
 import VPCurrent from './VPCurrent';
 import VPHiLow from './VPHiLow';
 import VPArchive from './VPArchive';
@@ -17,7 +17,7 @@ export default class CWOP {
     cwopUpdated: boolean;
     queryEngine: QueryEngine;
     socket: ClientSocket;
-
+    
     constructor(socket: ClientSocket) {
         this.config = require('./VantageJS.json');
         this.queryEngine = new QueryEngine();
@@ -25,37 +25,48 @@ export default class CWOP {
     }
      
     update(current: VPCurrent, hilows: VPHiLow) {       
-        var Util = Common.Util;       
+        let Util = Common.Util;       
         this.cwopUpdated = false;
         this.current = current;
         this.hilows = hilows;
         this.client = new net.Socket();
        
-        var promise = new Promise((resolve, reject) => {
+        let promise = new Promise((resolve, reject) => {
             try {
-                this.client.connect(14580, 'cwop.aprs.net', () => {
+                this.client.connect(14580, 'cwop.aprs.net', () => {                 
                     console.log('Connected to cwop');
                     this.client.write('user ' + this.config.CWOPId + ' pass -1 vers VantageJS 1.0\r\n');            //login to cwop
                 });
 
                 this.client.on('data', data => {
-                    this.dataReceived(data);
-                    if (this.cwopUpdated) {
-                        let now = moment();
-                        this.queryEngine.database.update('cwopUpdated', { _id: 1, lastUpdate: now.unix() }, true);
-                        this.socket.socketEmit('cwop', now.format('MM/DD/YYYY HH:mm:ss'));
-                        resolve();
+                
+                    if (this.dataReceived(data)) {     
+                        this.cwopUpdated = true;
+                        this.socket.socketEmit('cwop', current.dateLoaded);
+                        try {
+                            let now = moment(current.dateLoaded);
+                            this.queryEngine.database.update('cwopUpdated', { _id: 1, lastUpdate: now.unix() }, true);
+                        }
+                        catch (err) {
+                            Common.Logger.error(err);
+                        }
+
+                        this.closeClient();
+                        resolve(this.cwopUpdated);
                     }
                 });
 
                 this.client.on('error', error => {
+                    this.closeClient();
                     reject(error);
                 });
 
                 this.client.on('close', () => {
                     console.log('cwop Connection closed');
-                    if (!this.cwopUpdated)
+                    if (!this.cwopUpdated) {
+                        this.closeClient();
                         reject('cwop not updated');
+                    }
                 });
             }
             catch (e) {
@@ -68,16 +79,23 @@ export default class CWOP {
         
     }    
 
+    closeClient() {     
+        if (!this.client.destroyed) {
+            this.client.destroy();
+        }
+    }
+
     dataReceived(data) {
-        var resp = String.fromCharCode.apply(null, data);
-        var timeStr = moment(this.current.dateLoaded).utc().format('DDHHmm');
-        var Util = Common.Util;
+        let resp = String.fromCharCode.apply(null, data);
+        let timeStr = moment(this.current.dateLoaded).utc().format('DDHHmm');
+        let Util = Common.Util;
+        let updated = false;
         
         if (resp.indexOf('logresp') > -1) {
-            var baromb = this.current.barometer * 33.8637526 * 10;
-            var humidity = this.current.humidity == 100 ? 0 : this.current.humidity;
+            let baromb = this.current.barometer * 33.8637526 * 10;
+            let humidity = this.current.humidity == 100 ? 0 : this.current.humidity;
            
-            var updateStr = this.config.CWOPId + '>APRS,TCPIP*:@' + timeStr + 'z'
+            let updateStr = this.config.CWOPId + '>APRS,TCPIP*:@' + timeStr + 'z'
                 + this.config.CWLatitude + '/' + this.config.CWLongitude
                 + '_' + this.formatNum(this.current.windDir, 3)
                 + '/' + this.formatNum(this.current.windAvg, 3)
@@ -93,14 +111,12 @@ export default class CWOP {
 
             try {
                 this.client.write(updateStr + '\n\r');
-                this.cwopUpdated = true;
+                updated = true;
             }
             catch (ex) {
                 Common.Logger.error(ex);
-            }
-
-            //setInterval(() => { this.client.destroy(); }, 5000);
-           
+            }          
+            return updated;
         }        
     }
 
@@ -125,7 +141,7 @@ export default class CWOP {
             if (updated != null) {
 
                 await (async () => {
-                    for (var a = 0; a < archives.length; a++) {
+                    for (let a = 0; a < archives.length; a++) {
                         let arch = archives[a];
                         if (!lastDt || lastDt != arch.archiveDate) {
                             dayRain = 0;
@@ -135,7 +151,7 @@ export default class CWOP {
                             dayRain += arch.rainClicks / 100;
 
                         if (arch._id > updated.lastUpdate) {
-                            var curr = new VPCurrent(null);
+                            let curr = new VPCurrent(null);
                             curr.barometer = arch.barometer;
                             curr.dayRain = dayRain;
                             curr.humidity = arch.humidity;

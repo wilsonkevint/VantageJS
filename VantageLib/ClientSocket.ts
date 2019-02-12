@@ -36,11 +36,11 @@ export default class ClientSocket {
             console.log('ClientSocket connected');
             connectCB && connectCB(0);
             this.socket.on('current', current => {
-                this.emitEvent('current', JSON.parse(current));
+                this.emitEvent('current',current);
             });
 
             this.socket.on('hilows', hilows => {
-                this.emitEvent('hilows', JSON.parse(hilows));
+                this.emitEvent('hilows', hilows);
             });
 
             this.socket.on('vp1_current', current => {               

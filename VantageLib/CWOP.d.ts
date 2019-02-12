@@ -12,7 +12,8 @@ export default class CWOP {
     socket: ClientSocket;
     constructor(socket: ClientSocket);
     update(current: VPCurrent, hilows: VPHiLow): Promise<{}>;
-    dataReceived(data: any): void;
+    closeClient(): void;
+    dataReceived(data: any): boolean;
     formatNum(num: any, len: any): string | number;
     updateFromArchive(): Promise<void>;
 }
