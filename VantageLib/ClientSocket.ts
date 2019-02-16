@@ -49,7 +49,7 @@ export default class ClientSocket {
 
             this.socket.on('alerts', (data) => {
                 if (data && data.length) {
-                    var alerts = JSON.parse(data)[0];
+                    var alerts = data[0];
                     this.emitEvent('alerts', alerts);
                 }
             });        

@@ -275,7 +275,7 @@ export default class DeviceReader {
         this.lastLoop = new Date();
         if (this.validateLoop(data)) {
             this.current = new VPCurrent(data);
-            console.log('gotLoop current:', this.current.temperature);
+            //console.log('gotLoop current:', this.current.temperature);
             this.emitEvent('current', this.current);
         }
         else {

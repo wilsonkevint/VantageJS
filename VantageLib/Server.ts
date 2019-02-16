@@ -97,10 +97,14 @@ export default class Server {
                 }
             });
 
-            if (this.current && this.hilows) {
-                this.sendCurrent();
+            if (this.current && this.hilows) {                
                 setTimeout(() => {
                     this.sendHiLows();
+
+                    if (this.alerts && this.alerts.length) {
+                        this.sendAlerts();
+                    }
+                   
                 }, 3000);
                
             }
@@ -248,7 +252,7 @@ export default class Server {
             else {
                 if (this.current) {
                     res.writeHead(200, hdr);
-                    res.end(this.current);
+                    res.end(JSON.stringify(this.current));
                 }
                 else {
                     res.writeHead(200, hdr);
@@ -258,6 +262,7 @@ export default class Server {
         }
         catch (e) {
             Common.Logger.error('RequestReceived:' + e);
+            res.end('error:' + e);
         }
     }
 

@@ -12,7 +12,7 @@
     <SchemaVersion>2.0</SchemaVersion>
     <ProjectGuid>9e08bddd-c5ce-41c7-9e9c-5979fdd8a82c</ProjectGuid>
     <ProjectHome>.</ProjectHome>
-    <StartupFile>appVantage.ts</StartupFile>
+    <StartupFile>appServer.ts</StartupFile>
     <StartWebBrowser>False</StartWebBrowser>
     <SearchPath>
     </SearchPath>
