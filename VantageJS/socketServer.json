@@ -1,4 +1,0 @@
-﻿{  
-  "webPort": 9000,  
-  "allowOrigins": [ "http://k2015.duckdns.org", "http://dellws", "http://raspberrypi", "http://rpiquad" ]  
-}
