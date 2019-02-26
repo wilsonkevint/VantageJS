@@ -68,14 +68,15 @@ export default class Wunderground {
         var dateutc = current.wuUpdated.utc().format('YYYY-MM-DD+HH:mm:ss');
         dateutc = dateutc.replace(/:/g, '%3a');
 
-        var path = eval('`' + config.uploadPath + '`')
-            + '&winddir=' + current.windDir + '&windspeedmph=' + current.windAvg
-            + '&windgustmph=' + current.windSpeed + '&tempf=' + current.temperature
-            + '&rainin=' + current.rainRate + '&dailyrainin=' + current.dayRain + '&baromin=' + current.barometer
-            + '&humidity=' + current.humidity + '&dewptf=' + current.dewpoint
-            + '&action=updateraw'
-            + '&softwaretype=custom'
-            + '&realtime=1&rtfreq=' + config.updateFrequency;         
+        var path = config.uploadPath
+            + `?ID=${wuUserID}&PASSWORD=${wuPassword}&dateutc=${dateutc}\
+&winddir=${current.windDir}&windspeedmph=${current.windAvg}\
+&windgustmph=${current.windSpeed}&tempf=${current.temperature}\
+&rainin=${current.rainRate}&dailyrainin=${current.dayRain}&baromin=${current.barometer}\
+&humidity=${current.humidity}&dewptf=${current.dewpoint}\
+&action=updateraw\
+&softwaretype=custom\
+&realtime=1&rtfreq=${config.updateFrequency}`;         
 
         var options = {
             host: config.uploadHost,

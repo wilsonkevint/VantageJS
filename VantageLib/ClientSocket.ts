@@ -1,4 +1,5 @@
-﻿declare function require(name: string);
+﻿//ClientSocket - listens for web socket events and uses event emitter to fire events in local listeners
+declare function require(name: string);
 import * as Common from '../VantageLib/Common';
 import { EventEmitter } from 'events';
 const io = require('socket.io-client');

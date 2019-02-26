@@ -1,11 +1,11 @@
-﻿import Database from './Database';
+﻿//Archiver class - writes archive records to database by calling web service hosted by appVantage (which reads archive data from device)
+import Database from './Database';
 import VPArchive from './VPArchive';
 import WebRequest from './WebRequest';
 import VPCurrent from './VPCurrent';
 import * as Common from './Common';
 import ClientSocket from './ClientSocket';
-
-let moment = require('moment');
+const moment = require('moment');
 
 export default class Archiver {
     config: any;
@@ -14,11 +14,11 @@ export default class Archiver {
     lastId: number;
     inserted: number;
     archives: Array<VPArchive>;
-
+   
     constructor() {
-        this.config = require('./VantageJS.json');;
+        this.config = require('./VantageJS.json');
         this.database = new Database();       
-    }
+    }    
 
     async update() {
 
@@ -71,12 +71,8 @@ export default class Archiver {
         }
         else {
             this.insertArchives(idx);
-        }
-
-       
-    }
-
-
+        }       
+    }   
 
     async getArchives(lastdate) {
         let path = '/archives';

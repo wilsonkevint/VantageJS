@@ -29,12 +29,16 @@ export default class Server {
         Common.Logger.init('cwop.log');
         Common.Logger.info('started'); 
         this.server = Http.createServer((req, res) => { this.requestReceived(req, res) });
-        this.io = SocketIO(this.server);
-        this.io.origins = '*';
+
+        if (this.config.hostSocketServer != 'false') {
+            this.io = SocketIO(this.server);
+            this.io.origins = '*';
+            this.io.on('connection', (socket) => this.onConnection(socket));
+        }
 
         this.server.listen(this.config.socketPort);
         console.log('web server listening on ' + this.config.socketPort);
-        this.io.on('connection', (socket) => this.onConnection(socket));
+       
         this.clients = new Array<any>();         
     }
 

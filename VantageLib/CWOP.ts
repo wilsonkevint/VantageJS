@@ -1,4 +1,5 @@
-﻿declare function require(name: string);
+﻿//CWOP - updates CWOP web service 
+declare function require(name: string);
 let net = require('net');
 let moment = require('moment');
 import VPCurrent from './VPCurrent';

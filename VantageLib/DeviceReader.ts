@@ -1,4 +1,6 @@
-﻿declare function require(name: string);
+﻿//DeviceReader class encapsulates the process of interfacing to Vantage device via serial communications
+//Emits current and hi/low events to listeners in VantageVue class.  Runs continuously.
+declare function require(name: string);
 import * as Common from '../VantageLib/Common';  
 import VPBase from '../VantageLib/VPBase';
 import VPArchive from '../VantageLib/VPArchive';

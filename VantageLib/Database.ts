@@ -1,4 +1,5 @@
-﻿declare function require(name: string); 
+﻿//Database class encapsulates MongoDB methods for reading and updating data
+declare function require(name: string); 
 const MongoClient = require('mongodb').MongoClient;
 import * as Common from './Common';
 

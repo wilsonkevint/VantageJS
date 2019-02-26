@@ -1,4 +1,5 @@
-﻿import Archiver from '../VantageLib/Archiver';
+﻿// appArchiver - reads archive records from Vantage Vue and writes to database
+import Archiver from '../VantageLib/Archiver';
 import * as Common from '../VantageLib/Common';
 const moment = require('moment');
 const config = require('../VantageLib/VantageJS.json');
@@ -20,6 +21,8 @@ archiver.update().then(() => {
     Common.Logger.info('finished');
 }).catch(err => {
     Common.Logger.error(err);
-});
+ });
+
+
 
 
