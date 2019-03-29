@@ -2,8 +2,8 @@
 declare function require(name: string);
 let net = require('net');
 let moment = require('moment');
-import VPCurrent from './VPCurrent';
-import VPHiLow from './VPHiLow';
+import { VPCurrent } from './VPCurrent';
+import { VPHiLow } from './VPHiLow';
 import VPArchive from './VPArchive';
 import * as Common from './Common';
 import Database from './Database';

@@ -1,5 +1,5 @@
-﻿import VPCurrent from '../VantageLib/VPCurrent';
-import VPHiLow from '../VantageLib/VPHiLow';
+﻿import { VPCurrent } from '../VantageLib/VPCurrent';
+import { VPHiLow } from '../VantageLib/VPHiLow';
 import * as Common from '../VantageLib/Common';
 import QueryEngine from '../VantageLib/QueryEngine';
 

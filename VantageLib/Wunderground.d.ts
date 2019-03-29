@@ -1,6 +1,6 @@
 import Database from './Database';
 import WeatherAlert from './WeatherAlert';
-import VPCurrent from './VPCurrent';
+import { VPCurrent } from './VPCurrent';
 import ClientSocket from './ClientSocket';
 export default class Wunderground {
     config: any;
@@ -9,7 +9,7 @@ export default class Wunderground {
     constructor(socket: any);
     getAlerts(): Promise<WeatherAlert[]>;
     upload(current: VPCurrent): void;
-    static getForecast(config: any): any;
+    static getForecast(config: any): Promise<any>;
     updateFromArchive(): Promise<{}>;
 }
 //# sourceMappingURL=Wunderground.d.ts.map

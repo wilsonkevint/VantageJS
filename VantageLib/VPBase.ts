@@ -1,7 +1,8 @@
 ﻿declare function require(name: string);
 var moment = require('moment');
+declare var Math: any;
 
-export default class VPBase {
+export class VPBase {
     _data: Uint8Array;
     dataIndx: number;
 

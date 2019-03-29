@@ -1,7 +1,7 @@
 /// <reference types="node" />
 import VPArchive from '../VantageLib/VPArchive';
-import VPCurrent from '../VantageLib/VPCurrent';
-import VPHiLow from '../VantageLib/VPHiLow';
+import { VPCurrent } from '../VantageLib/VPCurrent';
+import { VPHiLow } from '../VantageLib/VPHiLow';
 import { EventEmitter } from 'events';
 export default class DeviceReader {
     config: any;

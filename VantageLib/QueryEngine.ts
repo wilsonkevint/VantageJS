@@ -3,7 +3,7 @@ const moment = require('moment');
 const linq = require('linq');
 import Database from './Database';
 import * as Common from './Common';
-import VPCurrent from './VPCurrent';
+import { VPCurrent } from './VPCurrent';
 
 export default class QueryEngine {
     config: any;

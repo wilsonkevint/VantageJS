@@ -1,9 +1,11 @@
 ﻿import DeviceReader from './DeviceReader';
 import * as Common from '../VantageLib/Common';
 import ClientSocket from './ClientSocket';
-import VPCurrent from '../VantageLib/VPCurrent';
+import { VPCurrent } from '../VantageLib/VPCurrent';
 import Wunderground from './Wunderground';
 import { setImmediate } from 'timers';
+import WebRequest from './WebRequest';
+
 const os = require('os');
 const moment = require('moment');
 const Http = require('http');
@@ -53,10 +55,11 @@ export default class VantageVue {
                 this.forecast = forecast;
                 this.hilows.forecast = this.forecast;
                 this.socket.socketEmit('hilows', this.hilows);
-            }).catch(err => {
+            }, err => {
                 Common.Logger.error(err);
                 this.socket.socketEmit('hilows', this.hilows);
             });
+         
         });
 
         this.device.subscribeError( (err) => {
@@ -67,10 +70,7 @@ export default class VantageVue {
 
         this.server.listen(this.config.webPort);
         console.log('web server listening on ' + this.config.webPort);        
-
-        this.getForecast().then(forecast => {
-            this.forecast = forecast;
-        });
+ 
        
     }
 
@@ -109,21 +109,38 @@ export default class VantageVue {
         }
     }
 
-    getForecast(): any {
+     async getForecast(): Promise<any> {
         var last;
-        var promise;
+        var forecast;
 
         if (this.forecast) {
             last = VPCurrent.timeDiff(this.forecast.last, 'h');
         }
 
-        if (!last || last >= 2 || (this.forecast.periods.length && !this.forecast.periods[0].fcttext)) {
-            promise = Wunderground.getForecast(this.config);
-        }
-        else {
-            promise = Promise.resolve(this.forecast);
-        }
+         let promise = new Promise<any>((resolve, reject) => {
+             if (!last || last >= 2 || (this.forecast.periods.length == 0)) {
 
+                 WebRequest.get(this.config.forecastUrl).then(data => {
+                     let wforecast = JSON.parse(data).daypart[0];
+                     let result = { last: new Date(), periods: [] };
+
+                     wforecast.daypartName.forEach(period => {
+                         let idx = result.periods.length;
+                         let fcast = { name: period, text: wforecast.narrative[idx] }
+                         result.periods.push(fcast);
+                         idx++;
+                     });
+
+                     resolve(result);
+
+                 }, err => reject(err));
+             }
+             else {
+                 resolve();
+             }
+         });
+
+        
         return promise;
     }
 } 

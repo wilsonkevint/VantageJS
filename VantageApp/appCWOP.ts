@@ -1,7 +1,7 @@
 ﻿//appCWOP updates CWOP web service by subscribing to socket current and hi/low events
 import CWOP from '../VantageLib/CWOP';
 import ClientSocket from '../VantageLib/ClientSocket';
-import VPCurrent from '../VantageLib/VPCurrent';
+import { VPCurrent } from '../VantageLib/VPCurrent';
 import * as Common from '../VantageLib/Common';
 const moment = require('moment');
 

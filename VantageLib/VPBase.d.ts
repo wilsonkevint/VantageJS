@@ -1,4 +1,4 @@
-export default class VPBase {
+export declare class VPBase {
     _data: Uint8Array;
     dataIndx: number;
     constructor(data: Uint8Array);

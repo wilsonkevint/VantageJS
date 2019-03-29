@@ -12,6 +12,6 @@ export default class VantageVue {
     constructor();
     start(): void;
     requestReceived(req: any, res: any): void;
-    getForecast(): any;
+    getForecast(): Promise<any>;
 }
 //# sourceMappingURL=VantageVue.d.ts.map

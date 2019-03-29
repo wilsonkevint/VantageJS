@@ -1,5 +1,5 @@
-import VPBase from './VPBase';
-export default class VPCurrent extends VPBase {
+import { VPBase } from './VPBase';
+export declare class VPCurrent extends VPBase {
     constructor(data: Uint8Array);
     barometerTrend: string;
     barometer: number;

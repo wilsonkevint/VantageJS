@@ -2,7 +2,7 @@
 import Database from './Database';
 import VPArchive from './VPArchive';
 import WebRequest from './WebRequest';
-import VPCurrent from './VPCurrent';
+import { VPCurrent } from './VPCurrent';
 import * as Common from './Common';
 import ClientSocket from './ClientSocket';
 const moment = require('moment');

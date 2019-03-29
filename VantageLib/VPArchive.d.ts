@@ -1,4 +1,4 @@
-import VPBase from './VPBase';
+import { VPBase } from './VPBase';
 export default class VPArchive extends VPBase {
     constructor(data: Uint8Array, index: number);
     archiveDate: string;

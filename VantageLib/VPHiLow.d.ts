@@ -1,5 +1,5 @@
-import VPBase from './VPBase';
-export default class VPHiLow extends VPBase {
+import { VPBase } from './VPBase';
+export declare class VPHiLow extends VPBase {
     constructor(data: Uint8Array);
     barometer: HiLow;
     windSpeed: HiLow;

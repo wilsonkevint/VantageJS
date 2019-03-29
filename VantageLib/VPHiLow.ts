@@ -1,6 +1,6 @@
-﻿import VPBase from './VPBase';
+﻿import { VPBase } from './VPBase';
 
-export default class VPHiLow extends VPBase {
+export class VPHiLow extends VPBase {
     constructor(data: Uint8Array) {
         super(data);
         this.dataIndx = 0;

@@ -1,5 +1,5 @@
-import VPCurrent from '../VantageLib/VPCurrent';
-import VPHiLow from '../VantageLib/VPHiLow';
+import { VPCurrent } from '../VantageLib/VPCurrent';
+import { VPHiLow } from '../VantageLib/VPHiLow';
 import QueryEngine from '../VantageLib/QueryEngine';
 export default class Server {
     server: any;

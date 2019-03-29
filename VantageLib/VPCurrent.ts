@@ -1,6 +1,6 @@
-﻿import VPBase from './VPBase';
+﻿import { VPBase } from './VPBase';
 
-export default class VPCurrent extends VPBase {
+export class VPCurrent extends VPBase {
 
     constructor(data: Uint8Array) {
         super(data);

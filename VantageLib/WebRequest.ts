@@ -8,17 +8,25 @@ const querystring = require('querystring');
 
 export default class WebRequest {
 
-    static get(host: string, path: string, args: object = null, timeout = 4000): Promise<any> {
+    static get(host: string, path: string=null, args: object = null, timeout = 4000): Promise<any> {
             var port = 80; 
             var Http = http;
+
+            if (host.startsWith('https')) {
+                Http = https;
+                host = host.substr(host.indexOf('//') + 2);   
+                port = 443;
+            }
+            console.log(host);
             if (!path) {
                 if (host.indexOf('/') > -1) {
                     path = host.substr(host.indexOf('/') - 1 + 1);
-                    host = host.substr(0, host.indexOf('/'));
+                    host = host.substr(0, host.indexOf('/'));                   
                 }
                 else
                     path = '/';
             }
+
 
             if (args) {
                 path += '?' + querystring.stringify(args);
@@ -33,6 +41,7 @@ export default class WebRequest {
                     Http = https;
             }
 
+            
             var options = {
                 host: host,
                 port: port,

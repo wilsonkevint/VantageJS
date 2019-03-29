@@ -5,9 +5,9 @@ const http = require('http');
 const process = require('process');
 import WebRequest from './WebRequest';
 import WeatherAlert from './WeatherAlert';
-import VPCurrent from './VPCurrent';
+import { VPCurrent } from './VPCurrent';
 import VPArchive from './VPArchive';
-import VPHiLow from './VPHiLow';
+import { VPHiLow } from './VPHiLow';
 import ClientSocket from './ClientSocket';
 
 import * as Common from './Common';
@@ -128,27 +128,24 @@ export default class Wunderground {
         }
     }
 
-    static getForecast(config): any {        
+    static async getForecast(config): Promise<any> {        
       
         if (!config.forecastUrl) {
             return;
-        }
+        }        
 
-        var token = config.wuToken; 
-        var cityState = config.wuCityState.split(','); 
-        var city = cityState[0];
-        var state = cityState[1]; 
-        var url = eval('`' + config.forecastUrl + '`');      
-
-        return WebRequest.get(url, null).then(function(data) {
-            var wforecast = JSON.parse(data).forecast;
-            var forecast = { last: new Date(), periods: [] };
-
-            wforecast.txt_forecast.forecastday.forEach( period => {
-                forecast.periods.push(period);
+        let forecast =  WebRequest.get(config.forecastUrl, null).then(function(data) {
+            let wforecast = JSON.parse(data).daypart[0];
+            let result = { last: new Date(), periods: [] };
+           
+            wforecast.daypartName.forEach(period => {
+                let idx = result.periods.length;
+                let fcast = {name:period, text: wforecast.narrative[idx] }
+                result.periods.push(fcast);
+                idx++;
             });
         
-            return forecast;
+            return result;
             
 
         });
