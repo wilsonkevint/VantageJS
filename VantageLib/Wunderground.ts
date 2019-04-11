@@ -127,31 +127,7 @@ export default class Wunderground {
             Common.Logger.error(ex.toString());
         }
     }
-
-    static async getForecast(config): Promise<any> {        
-      
-        if (!config.forecastUrl) {
-            return;
-        }        
-
-        let forecast =  WebRequest.get(config.forecastUrl, null).then(function(data) {
-            let wforecast = JSON.parse(data).daypart[0];
-            let result = { last: new Date(), periods: [] };
-           
-            wforecast.daypartName.forEach(period => {
-                let idx = result.periods.length;
-                let fcast = {name:period, text: wforecast.narrative[idx] }
-                result.periods.push(fcast);
-                idx++;
-            });
-        
-            return result;
-            
-
-        });
-        
-    }
-
+   
 
     async updateFromArchive() {
         var lastDt = null;

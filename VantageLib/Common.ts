@@ -40,8 +40,14 @@ export class Logger {
     }
 
     static error(...args) {
-        var dt = moment().format('MM/DD HH:mm:ss');         
-        Logger.winston.log('error', dt,args);
+        var dt = moment().format('MM/DD HH:mm:ss');       
+        if (args.length && args[0].message) {
+            Logger.winston.log('error', dt, args[0].message);
+        }
+        else {
+            Logger.winston.log('error', dt, args);
+        }
+        console.log(args);
     }
 
     static debug(...args) {

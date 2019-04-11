@@ -1,11 +1,11 @@
 ﻿//DeviceReader class encapsulates the process of interfacing to Vantage device via serial communications
 //Emits current and hi/low events to listeners in VantageVue class.  Runs continuously.
 declare function require(name: string);
-import * as Common from '../VantageLib/Common';  
-import { VPBase } from '../VantageLib/VPBase';
-import VPArchive from '../VantageLib/VPArchive';
-import { VPCurrent } from '../VantageLib/VPCurrent';
-import { VPHiLow } from '../VantageLib/VPHiLow';
+import * as Common from './Common';  
+import { VPBase } from './VPBase';
+import VPArchive from './VPArchive';
+import { VPCurrent } from './VPCurrent';
+import { VPHiLow } from './VPHiLow';
 import { setInterval, clearInterval, setTimeout } from 'timers';
 import { EventEmitter } from 'events';
 const SerialPort = require("serialport");

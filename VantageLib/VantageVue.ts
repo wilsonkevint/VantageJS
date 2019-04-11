@@ -1,7 +1,7 @@
 ﻿import DeviceReader from './DeviceReader';
-import * as Common from '../VantageLib/Common';
+import * as Common from './Common';
 import ClientSocket from './ClientSocket';
-import { VPCurrent } from '../VantageLib/VPCurrent';
+import { VPBase } from './VPBase';
 import Wunderground from './Wunderground';
 import { setImmediate } from 'timers';
 import WebRequest from './WebRequest';
@@ -42,7 +42,7 @@ export default class VantageVue {
 
             if (this.vp1current) {
                 var dateLoaded = moment(this.vp1current, 'yyyy-mm-ddTHH:MM:ss');
-                if (VPCurrent.timeDiff(dateLoaded.toDate(), 'm') < 6) {
+                if (VPBase.timeDiff(dateLoaded.toDate(), 'm') < 6) {
                     this.current.temperature = this.vp1current.temperature;
                 }
             }
@@ -52,7 +52,9 @@ export default class VantageVue {
         this.device.subscribeHiLow((hilows) => {
             this.hilows = hilows;
             this.getForecast().then(forecast => {
-                this.forecast = forecast;
+                if (forecast) {
+                    this.forecast = forecast;                    
+                }
                 this.hilows.forecast = this.forecast;
                 this.socket.socketEmit('hilows', this.hilows);
             }, err => {
@@ -109,18 +111,19 @@ export default class VantageVue {
         }
     }
 
-     async getForecast(): Promise<any> {
-        var last;
+     getForecast(): Promise<any> {
+         var last = null;
         var forecast;
 
-        if (this.forecast) {
-            last = VPCurrent.timeDiff(this.forecast.last, 'h');
+         if (this.forecast) {
+             last = VPBase.timeDiff(this.forecast.last, 'h');
         }
 
          let promise = new Promise<any>((resolve, reject) => {
-             if (!last || last >= 2 || (this.forecast.periods.length == 0)) {
+             if (last==null || last >= 2 || (this.forecast.periods.length == 0)) {
 
                  WebRequest.get(this.config.forecastUrl).then(data => {
+
                      let wforecast = JSON.parse(data).daypart[0];
                      let result = { last: new Date(), periods: [] };
 
