@@ -47,6 +47,9 @@
     <TypeScriptCompile Include="CWOP.ts" />
     <TypeScriptCompile Include="Database.ts" />
     <TypeScriptCompile Include="DeviceReader.ts" />
+    <TypeScriptCompile Include="DataServer.ts">
+      <SubType>Code</SubType>
+    </TypeScriptCompile>
     <TypeScriptCompile Include="QueryEngine.ts" />
     <TypeScriptCompile Include="Server.ts" />
     <TypeScriptCompile Include="VantageVue.ts">

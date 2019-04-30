@@ -14,13 +14,11 @@ import * as Common from './Common';
 
 export default class Wunderground {
     config: any;
-    database: Database;
-    socket: ClientSocket;
+    database: Database;   
      
-    constructor(socket) {
+    constructor() {
         this.config = require('./VantageJS.json');
-        this.database = new Database();
-        this.socket = socket;
+        this.database = new Database();     
     }    
 
     async getAlerts() {
@@ -92,8 +90,7 @@ export default class Wunderground {
                     var resultData = String.fromCharCode.apply(null, chunk);                    
                     var timeStamp = current.wuUpdated.unix(); 
 
-                    if (resultData.startsWith('success')) {
-                        this.socket.socketEmit('updatewu', current.wuUpdated);
+                    if (resultData.startsWith('success')) {                        
                         this.database.find('wuUpdated', { _id: 1 }).next().then(wuUpd => {
                             if (wuUpd.lastUpdate < timeStamp) {
                                 this.database.update('wuUpdated', { _id: 1, lastUpdate: timeStamp }, true).then(() => {

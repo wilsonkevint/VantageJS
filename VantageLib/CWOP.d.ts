@@ -1,7 +1,6 @@
 import { VPCurrent } from './VPCurrent';
 import { VPHiLow } from './VPHiLow';
 import QueryEngine from './QueryEngine';
-import ClientSocket from './ClientSocket';
 export default class CWOP {
     config: any;
     current: VPCurrent;
@@ -9,8 +8,7 @@ export default class CWOP {
     hilows: VPHiLow;
     cwopUpdated: boolean;
     queryEngine: QueryEngine;
-    socket: ClientSocket;
-    constructor(socket: ClientSocket);
+    constructor();
     update(current: VPCurrent, hilows: VPHiLow): Promise<{}>;
     closeClient(): void;
     dataReceived(data: any): boolean;

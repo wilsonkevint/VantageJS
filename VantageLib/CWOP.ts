@@ -17,12 +17,12 @@ export default class CWOP {
     hilows: VPHiLow;
     cwopUpdated: boolean;
     queryEngine: QueryEngine;
-    socket: ClientSocket;
     
-    constructor(socket: ClientSocket) {
+    
+    constructor() {
         this.config = require('./VantageJS.json');
         this.queryEngine = new QueryEngine();
-        this.socket = socket;
+       
     }
      
     update(current: VPCurrent, hilows: VPHiLow) {       
@@ -43,7 +43,7 @@ export default class CWOP {
                 
                     if (this.dataReceived(data)) {     
                         this.cwopUpdated = true;
-                        this.socket.socketEmit('cwop', current.dateLoaded);
+                       // this.socket.socketEmit('cwop', current.dateLoaded);
                         try {
                             let now = moment(current.dateLoaded);
                             this.queryEngine.database.update('cwopUpdated', { _id: 1, lastUpdate: now.unix() }, true);
@@ -134,7 +134,7 @@ export default class CWOP {
             return;
         }
 
-        let csr = this.queryEngine.database.sort('archive', { _id: { $gt: updated.lastUpdate } }, { _id: 1 });
+        let csr = this.queryEngine.database.sort('vantage', { _id: { $gt: updated.lastUpdate } }, { _id: 1 });
         let archives = await csr.toArray();
 
         try {
@@ -180,7 +180,7 @@ export default class CWOP {
                     }
                 })();
 
-                console.log('finished');
+                console.log('finished update');
 
             }
         }

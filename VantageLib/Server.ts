@@ -1,7 +1,7 @@
-﻿import { VPCurrent } from '../VantageLib/VPCurrent';
-import { VPHiLow } from '../VantageLib/VPHiLow';
-import * as Common from '../VantageLib/Common';
-import QueryEngine from '../VantageLib/QueryEngine';
+﻿import { VPCurrent } from './VPCurrent';
+import { VPHiLow } from './VPHiLow';
+import * as Common from './Common';
+import QueryEngine from './QueryEngine';
 
 const Http = require('http');
 const SocketIO = require('socket.io');

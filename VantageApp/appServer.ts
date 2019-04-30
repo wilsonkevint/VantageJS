@@ -1,6 +1,7 @@
 ﻿//appServer - starts web and web socket service
-import Server from '../VantageLib/Server';
+import Server from '../VantageLib/DataServer';
+import DataServer from '../VantageLib/DataServer';
 
 
-const server = new Server();
+const server = new DataServer();
 server.start();

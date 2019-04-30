@@ -9,7 +9,7 @@ Common.Logger.info('started');
 
 
 let socket = new ClientSocket();
-let wu = new Wunderground(socket); 
+let wu = new Wunderground(); 
 
 wu.database.connect().then(() => {
     socket.start();

@@ -2,59 +2,62 @@
 declare function require(name: string);
 import * as Common from '../VantageLib/Common';
 import { EventEmitter } from 'events';
-const io = require('socket.io-client');
+import { setInterval, clearTimeout } from 'timers';
+const WebSocket = require('ws');
+
 
 export default class ClientSocket {
     config: any;
     socket: any;
     eventEmitter: any;
-    client: string;
-
-    public constructor(client:string = 'wsclient') {
-        this.config = require('./VantageJS.json');
-        this.client = client;
+   
+    public constructor() {
+        this.config = require('./VantageJS.json');       
         this.eventEmitter = new EventEmitter();    
     }
 
     start() {                 
         this.getSocket();        
-    }
+    }    
 
-    startAsync() {
-        return new Promise((resolve,reject) => {
-            this.getSocket(
-                () => resolve(),
-                err => reject(err));
+    timer = null;
+
+    getSocket(connectCB = null, errorCB = null) {      
+        this.socket = new WebSocket(this.config.socketUrl);
+
+        this.socket.on('connectFailed', function (error) {
+            Common.Logger.error('Connect Error: ' + error.toString());
+            this.emitEvent('connectFailed',error);
+            errorCB && errorCB(error);
         });
-    }
 
-    
-    getSocket(connectCB=null,errorCB=null) {       
-        this.socket = io(this.config.socketUrl, { query: { client: this.client } });
-        console.log('socket url:' + this.config.socketUrl); 
+        this.socket.on('close', (error) => {
+            Common.Logger.error('Connect Closed: ' + error.toString());
+            if (!this.timer) {
+                this.timer = setTimeout(() => {
+                    this.getSocket();
+                }, 10000);
+            }
+        });
 
-        this.socket.on('connect', () => {
+        this.socket.on('open', () => {
             console.log('ClientSocket connected');
+            if (this.timer) {
+                clearTimeout(this.timer);
+                this.timer = null;
+            }
             connectCB && connectCB(0);
-            this.socket.on('current', current => {
-                this.emitEvent('current',current);
-            });
+            this.emitEvent('open', {});            
+        });
 
-            this.socket.on('hilows', hilows => {
-                this.emitEvent('hilows', hilows);
-            });
+        var arryjs = ['{', '['];
 
-            this.socket.on('vp1_current', current => {               
-                this.emitEvent('vp1_current', JSON.parse(current));
-            });
-
-            this.socket.on('alerts', (data) => {
-                if (data && data.length) {
-                    var alerts = data[0];
-                    this.emitEvent('alerts', alerts);
-                }
-            });        
-        });  
+        this.socket.on('message', data => {         
+            if (arryjs.indexOf(data.substr(0, 1)) > -1) {
+                let evnt = JSON.parse(data);
+                this.emitEvent(evnt.eventName, evnt.eventObject);
+            }
+        });    
 
         this.socket.on('error', error => {
             errorCB && errorCB(error);

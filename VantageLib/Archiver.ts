@@ -24,7 +24,7 @@ export default class Archiver {
 
         if (this.socket == null) {
             this.socket = new ClientSocket();
-            await this.socket.startAsync();
+            this.socket.start();
         }
 
         await this.database.connect();
@@ -35,14 +35,14 @@ export default class Archiver {
         let data = await this.getArchives(lastDt);
 
         try {
+            if (data && data.length) {
+                this.archives = JSON.parse(data);
+                let idx = -1;
+                this.inserted = 0;
+                this.insertArchives(idx);
 
-            this.archives = JSON.parse(data);
-            let idx = -1;
-            this.inserted = 0;
-
-            this.insertArchives(idx);
-
-            Common.Logger.info('inserted ' + this.inserted + ' archive rows');
+                Common.Logger.info('found ' + data.length + ' archive rows');
+            }
         }
         catch (err) {
             Common.Logger.error(err);
@@ -55,7 +55,10 @@ export default class Archiver {
         if (idx == this.archives.length) {
             return;
         }
-
+        this.archives.forEach(a => {
+            let rec: any = a;
+            delete (rec.recDateTime);
+        });
         let a: VPArchive = this.archives[idx];
         a._id = moment(a.archiveDate + ' ' + a.archiveTime, 'MM/DD/YYYY HH:mm').unix();    
 
@@ -75,8 +78,8 @@ export default class Archiver {
     }   
 
     async getArchives(lastdate) {
-        let path = '/archives';
-        let args = { dt: lastdate };
+        let path = '/api/vantage/archives';
+        let args = { startdate: lastdate };
         let timeout = 60 * 5 * 1000;
         return WebRequest.get(this.config.webUrl, path,args,timeout);
     }

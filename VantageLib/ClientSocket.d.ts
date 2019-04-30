@@ -2,10 +2,9 @@ export default class ClientSocket {
     config: any;
     socket: any;
     eventEmitter: any;
-    client: string;
-    constructor(client?: string);
+    constructor();
     start(): void;
-    startAsync(): Promise<{}>;
+    timer: any;
     getSocket(connectCB?: any, errorCB?: any): void;
     emitEvent(name: string, obj: any): void;
     socketEmit(name: string, obj: any): void;
