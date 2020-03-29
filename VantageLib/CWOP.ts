@@ -17,21 +17,27 @@ export default class CWOP {
     hilows: VPHiLow;
     cwopUpdated: boolean;
     queryEngine: QueryEngine;
+    socket: ClientSocket;
     
-    
-    constructor() {
+
+    constructor(socket: ClientSocket) {
         this.config = require('./VantageJS.json');
         this.queryEngine = new QueryEngine();
+        this.socket = socket;
        
     }
      
     update(current: VPCurrent, hilows: VPHiLow) {       
         let Util = Common.Util;       
-        this.cwopUpdated = false;
+        this.cwopUpdated = false; 
         this.current = current;
         this.hilows = hilows;
         this.client = new net.Socket();
-       
+
+        if (typeof (current.dateLoaded) == 'string') {
+            current.dateLoaded = moment(current.dateLoaded, "yyyy-MM-DDTHH:mm:ss").toDate();
+        }
+
         let promise = new Promise((resolve, reject) => {
             try {
                 this.client.connect(14580, 'cwop.aprs.net', () => {                 
@@ -43,16 +49,17 @@ export default class CWOP {
                 
                     if (this.dataReceived(data)) {     
                         this.cwopUpdated = true;
-                       // this.socket.socketEmit('cwop', current.dateLoaded);
+                        
                         try {
                             let now = moment(current.dateLoaded);
                             this.queryEngine.database.update('cwopUpdated', { _id: 1, lastUpdate: now.unix() }, true);
+                            this.socket.send({ eventType: 5, eventDate: now.format('MM/DD/YYYY HH:mm:ss') });
                         }
                         catch (err) {
                             Common.Logger.error(err);
                         }
 
-                        this.closeClient();
+                        this.closeClient();                       
                         resolve(this.cwopUpdated);
                     }
                 });

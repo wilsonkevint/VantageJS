@@ -4,10 +4,13 @@ export default class ClientSocket {
     eventEmitter: any;
     constructor();
     start(): void;
+    startAsync(): Promise<{}>;
     timer: any;
     getSocket(connectCB?: any, errorCB?: any): void;
+    reconnect(): void;
     emitEvent(name: string, obj: any): void;
     socketEmit(name: string, obj: any): void;
+    send(obj: any): void;
     subscribeCurrent(listener: any): void;
     subscribeHiLow(listener: any): void;
     subscribeAlert(listener: any): void;

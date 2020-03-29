@@ -12,7 +12,7 @@
     <SchemaVersion>2.0</SchemaVersion>
     <ProjectGuid>9e08bddd-c5ce-41c7-9e9c-5979fdd8a82c</ProjectGuid>
     <ProjectHome>.</ProjectHome>
-    <StartupFile>appCWOP.ts</StartupFile>
+    <StartupFile>appServer.ts</StartupFile>
     <StartWebBrowser>False</StartWebBrowser>
     <SearchPath>
     </SearchPath>
@@ -39,6 +39,9 @@
     <Content Include="tsconfig.json" />
     <TypeScriptCompile Include="appCWOP.ts" />
     <TypeScriptCompile Include="appServer.ts">
+      <SubType>Code</SubType>
+    </TypeScriptCompile>
+    <TypeScriptCompile Include="appUpdate.ts">
       <SubType>Code</SubType>
     </TypeScriptCompile>
     <TypeScriptCompile Include="appVantage.ts" />

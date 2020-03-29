@@ -2,7 +2,7 @@
 declare function require(name: string);
 import * as Common from '../VantageLib/Common';
 import { EventEmitter } from 'events';
-import { setInterval, clearTimeout } from 'timers';
+import { setInterval, clearTimeout, setTimeout } from 'timers';
 const WebSocket = require('ws');
 
 
@@ -20,6 +20,17 @@ export default class ClientSocket {
         this.getSocket();        
     }    
 
+    async startAsync() {
+        var promise = new Promise((resolve, reject) => {
+            this.getSocket(() => {
+                resolve();
+            }, (err) => {
+                reject();
+            })
+        });
+        return promise;
+    }
+
     timer = null;
 
     getSocket(connectCB = null, errorCB = null) {      
@@ -33,11 +44,7 @@ export default class ClientSocket {
 
         this.socket.on('close', (error) => {
             Common.Logger.error('Connect Closed: ' + error.toString());
-            if (!this.timer) {
-                this.timer = setTimeout(() => {
-                    this.getSocket();
-                }, 10000);
-            }
+            this.reconnect();
         });
 
         this.socket.on('open', () => {
@@ -47,6 +54,7 @@ export default class ClientSocket {
                 this.timer = null;
             }
             connectCB && connectCB(0);
+           
             this.emitEvent('open', {});            
         });
 
@@ -54,14 +62,35 @@ export default class ClientSocket {
 
         this.socket.on('message', data => {         
             if (arryjs.indexOf(data.substr(0, 1)) > -1) {
-                let evnt = JSON.parse(data);
-                this.emitEvent(evnt.eventName, evnt.eventObject);
+                let evnt = JSON.parse(data);               
+
+                if (evnt.current) {                     
+                    this.emitEvent('current', evnt.current);
+                }
+                if (evnt.hiLows) {                    
+                    setTimeout(() => {
+                        this.emitEvent('hilows', evnt);
+                    },2000);
+                    
+                }
+
+               
             }
         });    
 
         this.socket.on('error', error => {
+            this.reconnect();
             errorCB && errorCB(error);
         });
+    }
+
+    reconnect() {
+        if (!this.timer) {
+            this.timer = setTimeout(() => {
+                this.getSocket();
+                this.timer = null;
+            }, 10000);
+        }
     }
     
     emitEvent(name: string, obj: any) {
@@ -74,11 +103,24 @@ export default class ClientSocket {
     }
 
     socketEmit(name: string, obj: any) {
-        try {           
-            this.socket.emit(name, JSON.stringify(obj));
+        try {
+            var data = JSON.stringify({ eventType: name, eventObject: obj });
+            this.socket.send(data);            
         }
         catch (e) {
+            console.log(e);
             Common.Logger.error('ClientSocket.emit' + e);
+        }
+    }
+
+    send(obj: any) {
+        try {             
+            var data = JSON.stringify(obj);
+            this.socket.send(data);
+        }
+        catch (e) {
+            console.log(e);
+            Common.Logger.error('ClientSocket.send' + e);
         }
     }
 

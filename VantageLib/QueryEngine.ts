@@ -44,8 +44,7 @@ export default class QueryEngine {
             case 'months':
                 groupBy = { archiveTime: '$archiveDate' };
                 beginDt = moment.unix(beginDt).startOf('month').unix();
-                break;
-            case 'years':
+                break;            case 'years':
                 groupBy = { archiveTime: { $substrBytes: ['$archiveDate', 0, 2] } };  
                 beginDt = moment.unix(beginDt).startOf('year').unix();               
                 break;
@@ -80,7 +79,7 @@ export default class QueryEngine {
 
         var promise = new Promise((resolve, reject) => {           
 
-            this.database.db.collection('archive').aggregate([
+            this.database.db.collection('vantage').aggregate([
                 { $match: criteria },
                 group,
                 sortBy
